@@ -1,0 +1,43 @@
+import { HTMLTransformTarget, MarkupTransformer } from "@/transformer"
+import { TypedEvent } from "./typed-events";
+import type { FileData } from "@/interfaces/file-data";
+
+export const ReadFileServiceKey = Symbol('ReadFileService');
+
+export class ReadFileService {
+
+  public readonly onComplete = new TypedEvent<FileData>();
+
+  public readFile(file: File) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const content = e.target?.result as string
+      this.onComplete.emit(this.processFile(content, file.name));
+    }
+    reader.readAsText(file)
+  }
+
+
+  private processFile(content: string, fileName: string): FileData {
+    const markupTransformer = new MarkupTransformer<HTMLTransformTarget, string>(
+      new HTMLTransformTarget(),
+    )
+
+    const lines = content.split(/\r?\n/)
+
+    lines.forEach((line) => {
+      markupTransformer.next(line)
+    })
+
+    const results = markupTransformer.compose()
+
+    const charactersNode = results.yamlData.nodes?.find((x) => x.key?.toLowerCase() === 'characters')
+    const characters =
+      charactersNode?.nodes
+        ?.map((x) => x.key)
+        .filter((x) => x !== undefined) ?? []
+
+    return { content: results.output, scenes: results.scenes, characters, fileName }
+  }
+}
+

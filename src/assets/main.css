@@ -1,0 +1,13 @@
+@import './base.css';
+@import './screenplay.css';
+@import '@mdi/font/css/materialdesignicons.css';
+
+.syntax-highlight {
+  color: rgb(111, 166, 255);
+}
+
+@media (hover: hover) {
+  a:hover {
+    background-color: hsla(160, 100%, 37%, 0.2);
+  }
+}

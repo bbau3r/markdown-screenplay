@@ -1,0 +1,60 @@
+:root {
+  --sd-general-padding: 0.5rem 3rem 3rem 3rem;
+  --sd-general-padding-v: 3rem;
+  --sd-dialog-padding: 5rem;
+  --sd-dialog-parenthetical-padding: 8rem;
+  --sd-dialog-heading-padding: 10rem;
+  --sd-font-size: 18px;
+}
+
+@media (max-width: 550px) {
+  :root {
+    --sd-general-padding: 0.25rem 1.5rem 1.5rem 1.5rem;
+    --sd-general-padding-v: 1.5rem;
+    --sd-dialog-padding: 3rem;
+    --sd-dialog-parenthetical-padding: 4rem;
+    --sd-dialog-heading-padding: 6rem;
+    --sd-font-size: 14px;
+  }
+}
+
+.sp-container {
+  font-family: Courier, sans-serif;
+  font-size: var(--sd-font-size);
+  padding: var(--sd-general-padding, 3rem);
+}
+.scene-heading {
+  font-weight: 800;
+  display: flex;
+  justify-content: space-between;
+}
+.scene-heading::after {
+  content: attr(data-scene-count);
+  /*position: absolute;
+  left: calc(100% - var(--sd-general-padding-v));*/
+  white-space: nowrap;
+  text-align: right;
+  direction: rtl;
+}
+.scene-transition {
+  text-align: right;
+}
+.dialog {
+  margin-left: var(--sd-dialog-padding);
+  margin-right: var(--sd-dialog-padding);
+}
+.dialog-parenthetical {
+  margin-left: var(--sd-dialog-parenthetical-padding);
+  margin-right: var(--sd-dialog-parenthetical-padding);
+  font-style: italic;
+}
+.dialog-heading {
+  margin-left: var(--sd-dialog-heading-padding);
+  margin-right: var(--sd-dialog-heading-padding);
+}
+.title-section {
+  h1 {
+    display: inline-block;
+    border-bottom: 1px solid;
+  }
+}
