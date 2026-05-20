@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import CharacterHighlighter from "./CharacterHighlighter.vue";
+import type { CharacterFileData } from "@/interfaces/file-data";
 
 const props = withDefaults(
   defineProps<{

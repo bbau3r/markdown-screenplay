@@ -79,10 +79,10 @@ code,
     <v-sheet class="ma-2 pa-4" :elevation="12" rounded>
       <div class="inline-code">
         characters: <br />
-        &nbsp;&nbsp;- name: Morgan V <br />
-        &nbsp;&nbsp;&nbsp;&nbsp;color: "#d31111"<br />
-        &nbsp;&nbsp;- name: Elia <br />
-        &nbsp;&nbsp;&nbsp;&nbsp;color: "#11d311"<br />
+        &nbsp;&nbsp;- Morgan V <br />
+        &nbsp;&nbsp;color: "#d31111"<br />
+        &nbsp;&nbsp;- Elia <br />
+        &nbsp;&nbsp;color: "#11d311"<br />
       </div>
     </v-sheet>
 
