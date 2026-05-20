@@ -16,7 +16,7 @@ export const useFileStore = defineStore('files', {
       return this.files[index];
     },
     pushFile(file: FileData) {
-      const maxFiles = 3;
+      const maxFiles = 1;
       if (this.files.length === maxFiles)
         this.files.pop();
 

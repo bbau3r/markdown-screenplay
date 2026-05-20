@@ -159,7 +159,7 @@ onBeforeUnmount(() => {
 
 .app-bar {
   border-radius: 2rem;
-  margin: 0.5rem 1rem;
+  margin: 0.75rem 1rem;
   padding: 0 1rem;
   display: flex;
   justify-content: flex-start;
