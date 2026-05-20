@@ -1,28 +1,37 @@
 <script setup lang="ts">
-import { ReadFileService, ReadFileServiceKey } from '@/services/readfile-service'
-import { inject, ref } from 'vue'
+import {
+  ReadFileService,
+  ReadFileServiceKey,
+} from "@/services/readfile-service";
+import { inject, ref } from "vue";
 
 // Services
-const readFileService = inject<ReadFileService>(ReadFileServiceKey)
+const readFileService = inject<ReadFileService>(ReadFileServiceKey);
 
 // HTML Element References
-const fileInput = ref<HTMLInputElement | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null);
 
 // Methods
 const openFilePicker = () => {
-  fileInput.value?.click()
-}
+  fileInput.value?.click();
+};
 
 const handleFile = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.item(0)
-  if (file) readFileService?.readFile(file)
-}
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.item(0);
+  if (file) readFileService?.readFile(file);
+};
 </script>
 
 <template>
   <div class="mx-6">
-    <input type="file" ref="fileInput" @change="handleFile" accept=".msd" hidden />
+    <input
+      type="file"
+      ref="fileInput"
+      @change="handleFile"
+      accept=".msd, .txt, .md, .mdsp"
+      hidden
+    />
     <v-hover>
       <template v-slot:default="{ isHovering, props }">
         <v-card
@@ -37,9 +46,16 @@ const handleFile = (event: Event) => {
           rounded="lg"
           @click="openFilePicker"
         >
-          <v-icon class="mb-5" color="secondary" icon="mdi-folder-open-outline" size="112">
+          <v-icon
+            class="mb-5"
+            color="secondary"
+            icon="mdi-folder-open-outline"
+            size="112"
+          >
           </v-icon>
-          <h2 class="htext-h5 mb-6">Tap or drag <code>*.msd</code> file to load.</h2>
+          <h2 class="htext-h5 mb-6">
+            Tap or drag <code>*.msd, *.txt, *.md, *.mdsp</code> file to load.
+          </h2>
         </v-card>
       </template>
     </v-hover>

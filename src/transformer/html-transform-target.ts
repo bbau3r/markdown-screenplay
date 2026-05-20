@@ -103,6 +103,7 @@ export class HTMLTransformTarget implements TransformTarget<string> {
     // Clean up any unclosed sections
     this.closeActiveSection();
 
+    console.log("YAML Root:", yamlRoot);
     if (yamlRoot.nodes)
       return `${HTMLTransformTarget.renderTitle(yamlRoot.nodes)}\n${this._output}`;
     return this._output;

@@ -1,6 +1,6 @@
 import { HTMLTransformTarget, MarkupTransformer } from "@/transformer"
 import { TypedEvent } from "./typed-events";
-import type { FileData } from "@/interfaces/file-data";
+import type { CharacterFileData, FileData } from "@/interfaces/file-data";
 
 export const ReadFileServiceKey = Symbol('ReadFileService');
 
@@ -34,10 +34,14 @@ export class ReadFileService {
     const charactersNode = results.yamlData.nodes?.find((x) => x.key?.toLowerCase() === 'characters')
     const characters =
       charactersNode?.nodes
-        ?.map((x) => x.key)
+        ?.map((x) => ({
+          name: x.key,
+          color: x.nodes
+            ?.filter((n) => n.key?.toLowerCase() === 'color')?.[0]?.value
+            ?? "#2EFFEF7D"
+        } as CharacterFileData))
         .filter((x) => x !== undefined) ?? []
 
     return { content: results.output, scenes: results.scenes, characters, fileName }
   }
 }
-

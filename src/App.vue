@@ -15,7 +15,7 @@ const appBarService = new AppBarService();
 provide(AppBarServiceKey, appBarService);
 
 onMounted(() => {
-  router.afterEach((to, _) => {
+  router.afterEach((to) => {
     const id = Number(to.params.id);
     if (to.path == "/view" && !isNaN(id)) {
       appBarService.textOverride = fileStore.getFile(id).fileName ?? "";

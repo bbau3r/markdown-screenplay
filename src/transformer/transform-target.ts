@@ -17,6 +17,7 @@ export interface YAMLTreeNode {
   key?: string;
   value?: string;
   nodes?: YAMLTreeNode[];
+  isListItem?: boolean;
 }
 
 export interface SceneData {

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { type SceneData } from "@/transformer";
 import { useDisplay } from "vuetify";
 import CharactersSection from "@/components/viewer/CharactersSection.vue";
 import SceneSection from "@/components/viewer/SceneSection.vue";
@@ -26,12 +25,6 @@ function getFileContents(id: number) {
 }
 
 const file = ref<FileData | null>(null);
-
-const fileContent = ref<string>(file?.value?.content ?? "");
-const characters = ref<(CharacterData | string)[]>(
-  file?.value?.characters ?? []
-);
-const scenes = ref<SceneData[]>(file?.value?.scenes ?? []);
 
 getFileContents(Number(route.params.id));
 
