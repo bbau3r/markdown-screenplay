@@ -13,7 +13,7 @@ const router = createRouter({
       component: GuideView,
     },
     {
-      path: "/view",
+      path: "/view/:id",
       name: 'View File',
       component: FileView,
     },
@@ -29,7 +29,7 @@ router.beforeEach((to) => {
   if (to.path === '/view') {
     const fileStore = useFileStore()
 
-    const id = Number(to.query.id)
+    const id = Number(to.params.id)
     const isValid = fileStore && !isNaN(id) && id >= 0 && id < fileStore.files.length
 
     if (!isValid) {

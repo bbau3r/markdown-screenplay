@@ -8,7 +8,7 @@ import { useDisplay } from "vuetify";
 const fileStore = useFileStore();
 const route = useRoute();
 
-const showPrint = computed(() => route.path == "/view");
+const showPrint = computed(() => route.path.startsWith("/view"));
 
 //const id = Number(route.query.id ?? 0)
 //const file: FileData | undefined = fileStore.getFile(id) ?? undefined
@@ -39,7 +39,7 @@ let lastScrollY = 0;
 
 async function printDocument() {
   try {
-    const id = Number(route.query.id ?? 0);
+    const id = Number(route.params.id ?? 0);
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       throw new Error("Failed to open print window");
@@ -59,7 +59,7 @@ async function printDocument() {
     spContainer.classList.add("sp-container");
     spContainer.innerHTML = fileStore.getFile(id).content;
     doc.body.appendChild(spContainer);
-    setTimeout(() => printWindow.print(), 10);
+    setTimeout(() => printWindow.print(), 1);
   } catch (error) {
     console.error("Failed to setup document for printing", error);
   }

@@ -16,7 +16,7 @@ export const useFileStore = defineStore('files', {
       return this.files[index];
     },
     pushFile(file: FileData) {
-      const maxFiles = 1;
+      const maxFiles = 3;
       if (this.files.length === maxFiles)
         this.files.pop();
 
@@ -31,7 +31,7 @@ export const useFileStore = defineStore('files', {
     filesLinks: (state) => state.files.map((f, i) => ({
       text: f.fileName,
       icon: 'mdi-file-document',
-      route: 'view?id=' + i
+      route: '/view/' + i
     })) ?? []
   }
 })

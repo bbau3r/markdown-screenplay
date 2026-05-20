@@ -8,7 +8,7 @@ code {
 }
 code,
 .inline-code {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.95rem;
 }
 </style>
@@ -16,33 +16,46 @@ code,
 <template>
   <div class="mx-4 my-2">
     <h1>m-screend</h1>
-    <p><b>m-screend</b> is a minimalist markup format for writing screenplays.</p>
     <p>
-      Files use the <code>.msd</code> extension. Which can be loaded into this app's built-in
-      viewer.
+      <b>m-screend</b> is a minimalist markup format for writing screenplays.
     </p>
-    <p>This site is a Progressive Web App (PWA), so it works offline once installed or cached.</p>
+    <p>
+      Files use the <code>.msd</code> extension. Which can be loaded into this
+      app's built-in viewer.
+    </p>
+    <p>
+      This site is a Progressive Web App (PWA), so it works offline once
+      installed or cached.
+    </p>
 
     <h2>Basics</h2>
     <ul>
       <li><code>:</code> Scene Transition (e.g., <code>: CUT TO:</code>)</li>
-      <li><code>@</code> Scene Heading (e.g., <code>@ INT. KITCHEN – NIGHT</code>)</li>
+      <li>
+        <code>@</code> Scene Heading (e.g., <code>@ INT. KITCHEN – NIGHT</code>)
+      </li>
       <li><code>></code> Character name / dialog block initiator</li>
-      <li><code>> (...)</code> Parenthetical direction (e.g., <code>> (whispers)</code>)</li>
+      <li>
+        <code>>> (...)</code> Parenthetical direction (e.g.,
+        <code>> (whispers)</code>)
+      </li>
       <li><code>>></code> Dialog line that belongs to the active character</li>
       <li><code>**Bold Text**</code> → <b>Bold Text</b></li>
       <li><code>*Italicized Text*</code> → <i>Italicized Text</i></li>
       <li><code>_Underline Text_</code> → <u>Underline Text</u></li>
       <li><code>~Strikeout Text~</code> → <s>Strikeout Text</s></li>
-      <li><code>^[Superscript]</code> → <sup>Superscript</sup> (e.g., H<sup>2</sup>O)</li>
+      <li>
+        <code>^[Superscript]</code> → <sup>Superscript</sup> (e.g.,
+        H<sup>2</sup>O)
+      </li>
       <li><code>_[Subscript]</code> → <sub>Subscript</sub></li>
     </ul>
 
     <h2>Metadata</h2>
     <p>
-      Screenplay files can include optional metadata using a YAML block at the top of the file. This
-      is not required, but allows for enhanced rendering features such as title displays, list of
-      characters, or version tracking.
+      Screenplay files can include optional metadata using a YAML block at the
+      top of the file. This is not required, but allows for enhanced rendering
+      features such as title displays, list of characters, or version tracking.
     </p>
     <v-sheet class="ma-2 pa-4" :elevation="12" rounded>
       <div class="inline-code">
@@ -56,10 +69,12 @@ code,
 
     <h2>Characters</h2>
     <p>
-      Characters can be defined in metadata for reference and enhanced features like line
-      highlighting or filtering during rehearsal.
+      Characters can be defined in metadata for reference and enhanced features
+      like line highlighting or filtering during rehearsal.
     </p>
-    <p>Use the <code>characters</code> section inside the YAML block like so:</p>
+    <p>
+      Use the <code>characters</code> section inside the YAML block like so:
+    </p>
 
     <v-sheet class="ma-2 pa-4" :elevation="12" rounded>
       <div class="inline-code">
@@ -73,8 +88,8 @@ code,
 
     <h3>Tagging Characters in the Script</h3>
     <p>
-      Tagging characters is optional but allows your screenplay engine or viewer to recognize who is
-      speaking or being referenced. This enables:
+      Tagging characters is optional but allows your screenplay engine or viewer
+      to recognize who is speaking or being referenced. This enables:
     </p>
     <ul>
       <li>Role highlighting for rehearsal</li>
@@ -85,9 +100,9 @@ code,
     <h4>Supported Character Tagging Methods:</h4>
     <ul>
       <li>
-        <code>&Elia</code> or <code>&(Morgan V)</code> — Marks Elia and Morgan as present or
-        referenced in the scene. The parenthesis form is required when the reference name includes
-        spaces.
+        <code>&Elia</code> or <code>&(Morgan V)</code> — Marks Elia and Morgan
+        as present or referenced in the scene. The parenthesis form is required
+        when the reference name includes spaces.
       </li>
       <li>
         <code>[Momo](Morgan V)</code> — Displays "Momo" but links to reference
@@ -108,9 +123,9 @@ code,
       </div>
     </v-sheet>
     <p>
-      None of these tags are required, but using them allows your viewer/editor to detect character
-      involvement and power advanced features like filtering, highlighting, and interaction
-      analysis.
+      None of these tags are required, but using them allows your viewer/editor
+      to detect character involvement and power advanced features like
+      filtering, highlighting, and interaction analysis.
     </p>
   </div>
 </template>
