@@ -28,7 +28,9 @@ function getFileContents(id: number) {
 const file = ref<FileData | null>(null);
 
 const fileContent = ref<string>(file?.value?.content ?? "");
-const characters = ref<string[]>(file?.value?.characters ?? []);
+const characters = ref<(CharacterData | string)[]>(
+  file?.value?.characters ?? []
+);
 const scenes = ref<SceneData[]>(file?.value?.scenes ?? []);
 
 getFileContents(Number(route.params.id));

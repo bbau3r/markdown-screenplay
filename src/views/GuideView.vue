@@ -20,7 +20,7 @@ code,
       <b>m-screend</b> is a minimalist markup format for writing screenplays.
     </p>
     <p>
-      Files use the <code>.msd</code> extension. Which can be loaded into this
+      Files use the <code>.mdsp</code> extension. Which can be loaded into this
       app's built-in viewer.
     </p>
     <p>
@@ -37,7 +37,7 @@ code,
       <li><code>></code> Character name / dialog block initiator</li>
       <li>
         <code>>> (...)</code> Parenthetical direction (e.g.,
-        <code>> (whispers)</code>)
+        <code>>> (whispers)</code>)
       </li>
       <li><code>>></code> Dialog line that belongs to the active character</li>
       <li><code>**Bold Text**</code> → <b>Bold Text</b></li>

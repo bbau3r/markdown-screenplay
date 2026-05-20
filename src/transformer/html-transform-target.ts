@@ -14,6 +14,7 @@ export class HTMLTransformTarget implements TransformTarget<string> {
   private _sceneCount = 0;
   private _headingCount = 0;
   private _sceneAnchorFormat;
+  private _activeSection = false;
 
   private _output: string = "";
 
@@ -29,10 +30,12 @@ export class HTMLTransformTarget implements TransformTarget<string> {
   }
 
   ProcessSceneHeading(line: string, handleNewScene: boolean): void {
+    this.closeActiveSection();
     this._output += `<div id="${this.formatString(this._sceneAnchorFormat, this._headingCount + "")}" class="scene-heading"${handleNewScene ? ` data-scene-count="${this._sceneCount}"` : ""}>${this.identifyCharacter(line.slice(1).toUpperCase())}</div>\n`;
     this._headingCount++;
   }
   ProcessSceneTransition(line: string): void {
+    this.closeActiveSection();
     this._output += `<p class="scene-transition">${line.slice(1).toUpperCase()}:</p>\n`;
     this._sceneCount++;
   }
@@ -43,10 +46,27 @@ export class HTMLTransformTarget implements TransformTarget<string> {
     this._output += `<p class="${classType}">${this.formatLine(isParenthetical ? trimmedLine.toLowerCase() : trimmedLine)}</p>\n`;
   }
   ProcessDialogCharacter(line: string): void {
+    this.closeActiveSection();
+    this.openActiveSection();
     this._output += `<p class="dialog-heading">${this.formatLine(line.slice(1).toUpperCase())}</p>\n`;
   }
   ProcessDefault(line: string): void {
-    this._output += `<p>${this.formatLine(line)}</p>\n`;
+    this.closeActiveSection();
+    this._output += `<p class="section">${this.formatLine(line)}</p>\n`;
+  }
+
+  private openActiveSection(): void {
+    if (!this._activeSection) {
+      this._output += `<div class="section">\n`;
+      this._activeSection = true;
+    }
+  }
+
+  private closeActiveSection(): void {
+    if (this._activeSection) {
+      this._output += `</div>\n`;
+      this._activeSection = false;
+    }
   }
 
   private formatString(template: string, ...args: string[]): string {
@@ -80,6 +100,9 @@ export class HTMLTransformTarget implements TransformTarget<string> {
   }
 
   GenerateOutput(yamlRoot: YAMLTreeNode): string {
+    // Clean up any unclosed sections
+    this.closeActiveSection();
+
     if (yamlRoot.nodes)
       return `${HTMLTransformTarget.renderTitle(yamlRoot.nodes)}\n${this._output}`;
     return this._output;

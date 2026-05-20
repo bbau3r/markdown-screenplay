@@ -18,6 +18,12 @@
   }
 }
 
+@media print {
+  .section {
+    page-break-inside: avoid;
+  }
+}
+
 .sp-container {
   font-family: Courier, sans-serif;
   font-size: var(--sd-font-size);
@@ -38,6 +44,10 @@
 }
 .scene-transition {
   text-align: right;
+}
+.section {
+  margin-top: var(--sd-general-padding-v);
+  margin-bottom: var(--sd-general-padding-v);
 }
 .dialog {
   margin-left: var(--sd-dialog-padding);

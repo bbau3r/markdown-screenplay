@@ -1,7 +1,6 @@
 import type { SceneData, TransformResult, TransformTarget } from ".";
 import { YAMLParser } from "./yaml-parser";
 
-
 export class MarkupTransformer<T extends TransformTarget<U>, U> {
 
   private _handleYaml: boolean = false;
