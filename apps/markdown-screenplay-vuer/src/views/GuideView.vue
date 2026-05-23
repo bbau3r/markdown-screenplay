@@ -67,8 +67,8 @@ code,
       </div>
     </v-sheet>
 
-    Alternatively for if there are multiple authors the metadata can be
-    structured like this:
+    Alternatively if there are multiple authors the metadata can be structured
+    like this:
     <v-sheet class="ma-2 pa-4" :elevation="12" rounded>
       <div class="inline-code">
         --- <br />
