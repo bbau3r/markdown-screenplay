@@ -4,8 +4,6 @@
 
 Metadata is define by blocking it between `---`
 
-## Example
-
 ```text
 ---
 title: The Last Light

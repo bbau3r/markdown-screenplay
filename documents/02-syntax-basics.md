@@ -16,8 +16,6 @@ This also defines the difference between a main scene and a sub scene, where loc
 
 Use `@` to mark scene headings.
 
-Example:
-
 ```
 @ INT. KITCHEN – NIGHT
 ```
@@ -30,8 +28,6 @@ A sub scene is still a scene heading, but it is treated as a continuation of the
 
 Use `>` to start a character name line and `>>` for dialogue lines.
 
-Example:
-
 ```
 > MORGAN
 >> We need to leave now.
@@ -40,8 +36,6 @@ Example:
 ## Parentheticals
 
 Use `>> ( )` to mark parentheticals.
-
-Example:
 
 ```
 > MORGAN
