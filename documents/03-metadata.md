@@ -2,15 +2,17 @@
 
 `.mdsp` files may include optional YAML frontmatter at the top of the file.
 
+Metadata is define by blocking it between `---`
+
 ## Example
 
+```text
 ---
-
 title: The Last Light
-author: Brian & Co.
+author: Brian
 version: 1.0
-
 ---
+```
 
 ## Author and Authors
 
@@ -18,25 +20,21 @@ You can declare a single author with `author`, or multiple authors with `authors
 
 ### Single author
 
----
-
-title: The Last Light
-author: Brian & Co.
-version: 1.0
-
----
+```text
+author: Brian
+```
 
 ### Multiple authors
 
----
-
-title: The Last Light
+```text
 authors:
-  - Brian & Co.
-  - Alex Rivera
-version: 1.0
+- Brian
+- Alaa
+```
 
----
+## Extensions
+
+Metadata can be further extended to include additional types, see 04-character-tagging for the types of extensions.
 
 ## Notes
 

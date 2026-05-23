@@ -61,8 +61,20 @@ code,
       <div class="inline-code">
         --- <br />
         title: The Last Light <br />
-        author: Brian & Co. <br />
+        author: Brian <br />
         version: 1.0 <br />
+        ---
+      </div>
+    </v-sheet>
+
+    Alternatively for if there are multiple authors the metadata can be
+    structured like this:
+    <v-sheet class="ma-2 pa-4" :elevation="12" rounded>
+      <div class="inline-code">
+        --- <br />
+        authors: <br />
+        &nbsp;&nbsp;- Brian <br />
+        &nbsp;&nbsp;- Alaa <br />
         ---
       </div>
     </v-sheet>

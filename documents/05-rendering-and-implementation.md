@@ -1,6 +1,6 @@
 # Rendering and Implementation
 
-All implementations should interpret `.mdsp` consistently.
+All implementations should interpret `.mdsp` consistently. This includes supporting markdown inline formatting.
 
 ## Rendering expectations
 

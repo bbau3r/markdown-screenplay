@@ -5,7 +5,10 @@
 Use `:` to mark scene transitions.
 
 Example:
+
+```
 : CUT TO:
+```
 
 This also defines the difference between a main scene and a sub scene, where location details are not as important to the action, but still needed for the production crew.
 
@@ -14,7 +17,10 @@ This also defines the difference between a main scene and a sub scene, where loc
 Use `@` to mark scene headings.
 
 Example:
+
+```
 @ INT. KITCHEN – NIGHT
+```
 
 When rendering a main scene, a scene count should populate next to the heading.
 
@@ -26,9 +32,10 @@ Use `>` to start a character name line and `>>` for dialogue lines.
 
 Example:
 
+```
 > MORGAN
->
-> > We need to leave now.
+>> We need to leave now.
+```
 
 ## Parentheticals
 
@@ -36,4 +43,8 @@ Use `>> ( )` to mark parentheticals.
 
 Example:
 
-> > (quietly)
+```
+> MORGAN
+>> (quietly)
+>> I don't think it heard us.
+```
