@@ -22,8 +22,43 @@ function handleReadFileComplete(event: FileData) {
   });
 }
 
+const loadFile = (file?: File | null) => {
+  if (file) {
+    readFileService.readFile(file);
+  }
+};
+
+type LaunchQueueConsumer = {
+  setConsumer: (
+    consumer: (launchParams: {
+      files: FileSystemFileHandle[];
+    }) => void | Promise<void>,
+  ) => void;
+};
+
+const handleLaunchQueue = () => {
+  const launchQueue = (window as Window & { launchQueue?: LaunchQueueConsumer })
+    .launchQueue;
+
+  if (!launchQueue) {
+    return;
+  }
+
+  launchQueue.setConsumer(async (launchParams) => {
+    const [fileHandle] = launchParams.files;
+
+    if (!fileHandle) {
+      return;
+    }
+
+    const file = await fileHandle.getFile();
+    loadFile(file);
+  });
+};
+
 onMounted(() => {
   readFileService.onComplete.on(handleReadFileComplete);
+  handleLaunchQueue();
 });
 
 onBeforeUnmount(() => {
@@ -33,7 +68,7 @@ onBeforeUnmount(() => {
 const handleDrop = (event: DragEvent) => {
   event.preventDefault();
   const file = event.dataTransfer?.files.item(0);
-  if (file) readFileService.readFile(file);
+  loadFile(file);
 };
 </script>
 <template>

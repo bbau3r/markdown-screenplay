@@ -1,0 +1,28 @@
+{
+  "name": "markdown screenplay",
+  "short_name": "md-screenplay",
+  "description": "Open and view markdown screenplay files in a lightweight PWA.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "text/markdown": [".mdsp"],
+        "text/plain": [".mdsp"]
+      }
+    }
+  ]
+}
