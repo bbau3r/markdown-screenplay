@@ -20,7 +20,6 @@ You can check out a live deployment by navigating to [m-screend.web.app](https:/
 
 - Node.js 22+
 - npm
-- a local checkout of this repository
 
 ### Development
 
