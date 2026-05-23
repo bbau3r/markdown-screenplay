@@ -111,9 +111,9 @@ code,
       <div class="inline-code">
         characters: <br />
         &nbsp;&nbsp;- Morgan V <br />
-        &nbsp;&nbsp;color: "#d31111"<br />
+        &nbsp;&nbsp;color: #d31111<br />
         &nbsp;&nbsp;- Elia <br />
-        &nbsp;&nbsp;color: "#11d311"<br />
+        &nbsp;&nbsp;color: #11d311<br />
       </div>
     </v-sheet>
 
