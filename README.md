@@ -12,9 +12,9 @@ This format can also be implemented for other viewers and editors and expanded u
 
 The `markdown-screenplay-vuer` app is the user-facing viewer for `.mdsp` files. It handles loading content, rendering screenplay output, and surfacing the viewer experience for local files and browser-based usage.
 
-### Live Demo
+### Live Deployment
 
-You can check out a live deployment by navigating to [m-screend.web.app](https://m-screend.web.app)
+You can check out a live deployment of the app by navigating to [m-screend.web.app](https://m-screend.web.app)
 
 ### What you need to work on it
 

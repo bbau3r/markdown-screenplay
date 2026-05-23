@@ -1,4 +1,22 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import sampleContent from "../../../../samples/12_angry_men.mdsp?raw";
+import { ReadFileService } from "@/services/readfile-service";
+import { useFileStore } from "@/store/fileStore";
+import { useRouter } from "vue-router";
+
+const readFileService = new ReadFileService();
+const fileStore = useFileStore();
+const router = useRouter();
+
+function loadSample() {
+  const file = readFileService.processContent(
+    sampleContent,
+    "12_angry_men.mdsp",
+  );
+  fileStore.pushFile(file);
+  router.push({ path: "/view/0" });
+}
+</script>
 <style scoped>
 code {
   background: rgb(var(--v-theme-surface));
@@ -15,9 +33,10 @@ code,
 
 <template>
   <div class="mx-4 my-2">
-    <h1>m-screend</h1>
+    <h1>Markdown Screenplay</h1>
     <p>
-      <b>m-screend</b> is a minimalist markup format for writing screenplays.
+      <b>markdown-screenplay</b> is a minimalist markup format for writing
+      screenplays.
     </p>
     <p>
       Files use the <code>.mdsp</code> extension. Which can be loaded into this
@@ -139,5 +158,19 @@ code,
       to detect character involvement and power advanced features like
       filtering, highlighting, and interaction analysis.
     </p>
+    <h2>Samples</h2>
+    <p>
+      Below are sample screenplays, in the markdown format, that can be loaded
+      into the viewer:
+    </p>
+    <v-btn
+      class="mt-2"
+      color="secondary"
+      variant="tonal"
+      rounded
+      @click="loadSample"
+    >
+      12 Angry Men
+    </v-btn>
   </div>
 </template>

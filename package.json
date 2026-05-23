@@ -12,5 +12,8 @@
     "type-check": "npm run --workspaces type-check",
     "lint": "npm -w markdown-screenplay-vuer run lint",
     "deploy": "npm -w markdown-screenplay-vuer run deploy"
+  },
+  "devDependencies": {
+    "vite-plugin-static-copy": "^4.1.0"
   }
 }

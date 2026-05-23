@@ -12,13 +12,12 @@ export class ReadFileService {
     const reader = new FileReader()
     reader.onload = (e) => {
       const content = e.target?.result as string
-      this.onComplete.emit(this.processFile(content, file.name));
+      this.onComplete.emit(this.processContent(content, file.name));
     }
     reader.readAsText(file)
   }
 
-
-  private processFile(content: string, fileName: string): FileData {
+  public processContent(content: string, fileName: string): FileData {
     const markupTransformer = new MarkupTransformer<HTMLTransformTarget, string>(
       new HTMLTransformTarget(),
     )

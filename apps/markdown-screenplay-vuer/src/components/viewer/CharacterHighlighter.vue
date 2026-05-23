@@ -1,43 +1,48 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch } from "vue";
 
 const props = defineProps<{
-  name: string
-  color: string
-}>()
+  name: string;
+  color: string;
+}>();
 
-const localName = ref(props.name)
+const localName = ref(props.name);
 
 const emit = defineEmits<{
-  (e: 'update:color', value: string): void
-  (e: 'update:active', value: boolean): void
-}>()
+  (e: "update:color", value: string): void;
+  (e: "update:active", value: boolean): void;
+}>();
 
-const menu = ref(false)
-const colorModel = ref(props.color)
-const activeModel = ref(false)
+const menu = ref(false);
+const colorModel = ref(props.color);
+const activeModel = ref(false);
 
 // Sync props to local refs
 watch(colorModel, (newColor) => {
-  colorModel.value = newColor
-  if (activeModel.value) updateElements()
-})
+  colorModel.value = newColor;
+  if (activeModel.value) updateElements();
+});
 
 watch(activeModel, (isActive) => {
-  activeModel.value = isActive
-  updateElements()
-})
+  activeModel.value = isActive;
+  updateElements();
+});
 
 function updateElements() {
-  const elements = document.querySelectorAll(`[data-character="${props.name.toLowerCase()}"]`)
+  console.log(colorModel.value);
+  const elements = document.querySelectorAll(
+    `[data-character="${props.name.toLowerCase()}"]`,
+  );
   elements.forEach((el) => {
-    ;(el as HTMLElement).style.backgroundColor = activeModel.value ? colorModel.value : ''
-  })
+    (el as HTMLElement).style.backgroundColor = activeModel.value
+      ? colorModel.value
+      : "";
+  });
 }
 
 // Emit changes
-watch(colorModel, (newColor) => emit('update:color', newColor))
-watch(activeModel, (newVal) => emit('update:active', newVal))
+watch(colorModel, (newColor) => emit("update:color", newColor));
+watch(activeModel, (newVal) => emit("update:active", newVal));
 </script>
 
 <template>
@@ -52,7 +57,12 @@ watch(activeModel, (newVal) => emit('update:active', newVal))
       />
     </v-col>
     <v-col cols="auto">
-      <v-menu v-model="menu" :close-on-content-click="false" offset-y max-width="320">
+      <v-menu
+        v-model="menu"
+        :close-on-content-click="false"
+        offset-y
+        max-width="320"
+      >
         <template #activator="{ props: menuProps }">
           <v-btn
             size="small"
