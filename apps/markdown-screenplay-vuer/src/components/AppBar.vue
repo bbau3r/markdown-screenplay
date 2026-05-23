@@ -8,10 +8,7 @@ import { useDisplay } from "vuetify";
 const fileStore = useFileStore();
 const route = useRoute();
 
-const showPrint = computed(() => route.path.startsWith("/view"));
-
-//const id = Number(route.query.id ?? 0)
-//const file: FileData | undefined = fileStore.getFile(id) ?? undefined
+const showFileActions = computed(() => route.path.startsWith("/view"));
 
 const appBarService = inject<AppBarService>(AppBarServiceKey);
 
@@ -81,14 +78,6 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!--
-  <v-app-bar rounded scroll-behavior="hide" scroll-threshold="1" v-if="!mdAndUp">
-    <v-app-bar-nav-icon
-      variant="text"
-      @click.stop="mdAndUp ? (isRail = !isRail) : (drawer = !drawer)"
-    />
-  </v-app-bar>
--->
   <v-slide-y-transition>
     <div class="app-bar-container" v-if="!smAndUp && showFab && !drawer">
       <div class="app-bar bg-indigo">
@@ -133,7 +122,7 @@ onBeforeUnmount(() => {
       </v-list>
       <v-list>
         <v-list-item
-          v-if="showPrint"
+          v-if="showFileActions"
           @click="printDocument"
           prepend-icon="mdi-printer"
           title="Print"
