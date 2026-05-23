@@ -4,18 +4,17 @@ Shared transformer utilities for Markdown Screenplay (`.mdsp`) parsing and rende
 
 ## Purpose
 
-This package contains the transformation logic used by the Vue app and any future consumers that need to parse or transform `.mdsp` content.
+This package contains the transformation logic used by viewer, editor, and tooling integrations that need to parse or transform `.mdsp` content.
 
 ## Public API
 
-The package currently exports:
+The package exports the core pieces needed to parse and transform `.mdsp` content, including the transformer entry point, target interfaces, and the result models used by consumers.
 
-- `MarkupTransformer`
-- `HTMLTransformTarget`
-- `TransformTarget`
-- `TransformResult`
-- `YAMLTreeNode`
-- `SceneData`
+## Extending
+
+You can create a custom output target by implementing `TransformTarget<T>`. This lets you reuse the parser pipeline while changing how `.mdsp` content is converted into your own output format.
+
+The `MarkupTransformer` remains the same entry point for parsing. You only need to provide a compatible target implementation and the desired output type.
 
 ## Usage
 
@@ -33,9 +32,3 @@ for (const line of content.split(/\r?\n/)) {
 
 const result = transformer.compose();
 ```
-
-## Notes
-
-- This package currently exposes source files directly.
-- If you want a cleaner separation later, you can publish a compiled build and switch the app to a package import path.
-- The app currently consumes the package through the `@transformers` alias during local development.
