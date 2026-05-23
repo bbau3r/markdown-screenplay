@@ -1,4 +1,4 @@
-import { HTMLTransformTarget, MarkupTransformer } from "@/transformer"
+import { HTMLTransformTarget, MarkupTransformer } from "@transformers"
 import { TypedEvent } from "./typed-events";
 import type { CharacterFileData, FileData } from "@/interfaces/file-data";
 

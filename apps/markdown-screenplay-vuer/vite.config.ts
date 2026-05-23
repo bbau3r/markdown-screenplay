@@ -12,7 +12,8 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@transformers': fileURLToPath(new URL('../../packages/markdown-screenplay-transformers/src', import.meta.url)),
     },
   },
 })

@@ -1,21 +1,21 @@
 <script setup lang="ts">
-import type { SceneData } from '@/transformer'
-import { ref } from 'vue'
+import type { SceneData } from "@transformers";
+import { ref } from "vue";
 
 const props = withDefaults(
   defineProps<{
-    scenes?: SceneData[]
+    scenes?: SceneData[];
   }>(),
   {
     scenes: () => [],
   },
-)
+);
 
-const scenes = ref<SceneData[]>(props.scenes)
+const scenes = ref<SceneData[]>(props.scenes);
 
 function scrollToScene(ref?: number) {
-  const element: HTMLElement | null = document.getElementById(`scene_${ref}`)
-  element?.scrollIntoView({ behavior: 'instant' })
+  const element: HTMLElement | null = document.getElementById(`scene_${ref}`);
+  element?.scrollIntoView({ behavior: "instant" });
 }
 </script>
 

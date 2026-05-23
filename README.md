@@ -1,45 +1,69 @@
-# m-screend
+# Markdown Screenplay
 
-This template should help get you started developing with Vue 3 in Vite.
+## Overview
 
-## Recommended IDE Setup
+`Markdown Screenplay` is a lightweight way to write screenplays using a Markdown-like syntax. The goal is to make screenplay creation easier by keeping the authoring format simple, readable, and portable while still supporting structured rendering in a viewer.
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+This project combines a Vue-based viewer with a shared transformer package so `.mdsp` content can be parsed consistently and rendered in the browser.
 
-## Type Support for `.vue` Imports in TS
+This format can also be implemented for other viewers and editors and expanded upon.
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+## Vuer
 
-## Customize configuration
+The `markdown-screenplay-vuer` app is the user-facing viewer for `.mdsp` files. It handles loading content, rendering screenplay output, and surfacing the viewer experience for local files and browser-based usage.
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+### What you need to work on it
 
-## Project Setup
+- Node.js 22+
+- npm
+- a local checkout of this repository
+
+### Development
+
+Install dependencies from the repository root:
 
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+Run the app locally:
 
 ```sh
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+Run the full build:
 
 ```sh
 npm run build
 ```
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+Run the app tests:
 
 ```sh
 npm run test:unit
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+Run type checking across the workspace:
+
+```sh
+npm run type-check
+```
+
+Run linting for the app package:
 
 ```sh
 npm run lint
 ```
+
+## Documentation
+
+The `documents/` folder contains the `.mdsp` specification and implementation notes. This is the shared reference for syntax, metadata, character tagging, and implementation expectations so the viewer and transformer package can stay aligned.
+
+## Contribution
+
+If you are working on transformer behavior, update the relevant documentation in `documents/` as well.
+
+If you are working on UI behavior, keep changes in `apps/markdown-screenplay-vuer` and reuse the shared transformer package wherever possible.
+
+If you want to clean up the remaining migration work, use the checklist in the transformer package README or create a focused follow-up task.

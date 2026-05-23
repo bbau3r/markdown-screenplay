@@ -1,4 +1,4 @@
-import type { SceneData } from "@/transformer";
+import type { SceneData } from "@transformers";
 
 export interface FileData {
   content: string;

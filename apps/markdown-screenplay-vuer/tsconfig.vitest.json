@@ -6,7 +6,7 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vitest.tsbuildinfo",
 
     "lib": [],
-    "typeRoots": ["node_modules/@types"],
+    "typeRoots": ["../../node_modules/@types"],
 
     "types": ["node", "jsdom"]
   }
