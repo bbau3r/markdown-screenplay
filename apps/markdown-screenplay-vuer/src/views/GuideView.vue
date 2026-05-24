@@ -53,6 +53,10 @@ code,
       <li>
         <code>@</code> Scene Heading (e.g., <code>@ INT. KITCHEN – NIGHT</code>)
       </li>
+      <li>
+        <code>@@</code> Scene Secondary Heading (e.g.,
+        <code>@@ EXT. HOUSE – NIGHT</code>)
+      </li>
       <li><code>></code> Character name / dialog block initiator</li>
       <li>
         <code>>> (...)</code> Parenthetical direction (e.g.,

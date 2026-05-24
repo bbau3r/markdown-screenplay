@@ -35,22 +35,27 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
     return { output, yamlData, scenes }
   }
 
+  private appendScene(line: string, handleNewScene: boolean) {
+    this._target.ProcessSceneHeading(line, handleNewScene);
+    const sceneName = line.slice(1).trim();
+    this._scenes.push({
+      name: sceneName,
+      ...(handleNewScene ? { isSub: true } : {})
+    })
+  }
+
   private processLine(line: string) {
     switch (true) {
       case line.length === 0:
         return;
+      case line.startsWith("@@"):
+        this.appendScene(line, false);
+        break;
       case line.startsWith("@"):
-        this._target.ProcessSceneHeading(line, this._handleNewScene);
-        const sceneName = line.slice(1).trim();
-        this._scenes.push({
-          name: sceneName,
-          ...(this._handleNewScene ? { isSub: true } : {})
-        })
-        this._handleNewScene = false;
+        this.appendScene(line, true);
         break;
       case line.startsWith(":"):
         this._target.ProcessSceneTransition(line);
-        this._handleNewScene = true;
         break;
       case line.startsWith(">>"):
         this._target.ProcessDialog(line);

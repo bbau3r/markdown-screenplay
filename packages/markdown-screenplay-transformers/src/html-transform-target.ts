@@ -11,7 +11,7 @@ export class HTMLTransformTarget implements TransformTarget<string> {
   private static readonly characterRefSinglePattern = /&(\w+)/g;
   private static readonly characterRefAliasPattern = /\[(.+?)\]\((.+?)\)/g;
 
-  private _sceneCount = 0;
+  private _sceneCount = 1;
   private _headingCount = 0;
   private _sceneAnchorFormat;
   private _activeSection = false;
@@ -33,11 +33,12 @@ export class HTMLTransformTarget implements TransformTarget<string> {
     this.closeActiveSection();
     this._output += `<div id="${this.formatString(this._sceneAnchorFormat, this._headingCount + "")}" class="scene-heading"${handleNewScene ? ` data-scene-count="${this._sceneCount}"` : ""}>${this.identifyCharacter(line.slice(1).toUpperCase())}</div>\n`;
     this._headingCount++;
+    if (handleNewScene)
+      this._sceneCount++;
   }
   ProcessSceneTransition(line: string): void {
     this.closeActiveSection();
     this._output += `<p class="scene-transition">${line.slice(1).toUpperCase()}:</p>\n`;
-    this._sceneCount++;
   }
   ProcessDialog(line: string): void {
     const trimmedLine: string = line.slice(2).trim();
