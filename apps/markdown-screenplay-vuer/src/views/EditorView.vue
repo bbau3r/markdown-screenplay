@@ -34,9 +34,6 @@ const handleMetadataUpdate = (metadata: MetadataData) => {
         <div class="d-flex flex-column ga-4">
           <div>
             <h1 class="text-h5 font-weight-bold mb-1">Editor</h1>
-            <p class="text-body-2 text-medium-emphasis">
-              Update the metadata for the active screenplay.
-            </p>
           </div>
 
           <MetaDataSection

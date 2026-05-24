@@ -55,13 +55,16 @@ export class ReadFileService {
     const titleNode = yamlData.nodes?.find((node) => node.key?.toLowerCase() === 'title');
     const versionNode = yamlData.nodes?.find((node) => node.key?.toLowerCase() === 'version');
     const authorsNode = yamlData.nodes?.find((node) => node.key?.toLowerCase() === 'authors');
+    const authorNode = yamlData.nodes?.find((node) => node.key?.toLowerCase() === 'author');
 
     return {
       title: titleNode?.value ?? "",
       version: versionNode?.value ?? "",
-      authors: authorsNode?.nodes
-        ?.map((node) => node.value ?? node.key ?? "")
-        .filter((value) => value.trim().length > 0) ?? [""],
+      authors: authorNode?.value
+        ? [authorNode.value]
+        : authorsNode?.nodes
+          ?.map((node) => node.value ?? node.key ?? "")
+          .filter((value) => value.trim().length > 0) ?? [""],
     }
   }
 }
