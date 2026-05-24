@@ -17,11 +17,20 @@ provide(AppBarServiceKey, appBarService);
 onMounted(() => {
   router.afterEach((to) => {
     const id = Number(to.params.id);
-    if (to.path == "/view" && !isNaN(id)) {
-      appBarService.textOverride = fileStore.getFile(id).fileName ?? "";
-    } else {
-      appBarService.textOverride = route.name?.toString() ?? "";
+    const isFileRoute =
+      to.path.startsWith("/view/") || to.path.startsWith("/editor/");
+
+    if (isFileRoute) {
+      fileStore.setEditing(to.path.startsWith("/editor/"));
     }
+
+    if (isFileRoute && !isNaN(id)) {
+      const file = fileStore.getFile(id);
+      appBarService.textOverride = file?.fileName ?? to.name?.toString() ?? "";
+    } else {
+      appBarService.textOverride = to.name?.toString() ?? "";
+    }
+
     window.scroll({ behavior: "instant", top: 0 });
   });
 });

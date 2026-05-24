@@ -1,6 +1,7 @@
 import { HTMLTransformTarget, MarkupTransformer } from "@transformers"
 import { TypedEvent } from "./typed-events";
-import type { CharacterFileData, FileData } from "@/interfaces/file-data";
+import type { CharacterFileData, FileData, MetadataData } from "@/interfaces/file-data";
+import type { YAMLTreeNode } from "@transformers";
 
 export const ReadFileServiceKey = Symbol('ReadFileService');
 
@@ -41,6 +42,26 @@ export class ReadFileService {
         } as CharacterFileData))
         .filter((x) => x !== undefined) ?? []
 
-    return { content: results.output, scenes: results.scenes, characters, fileName }
+    return {
+      content: results.output,
+      scenes: results.scenes,
+      characters,
+      fileName,
+      metadata: this.extractMetadata(results.yamlData),
+    }
+  }
+
+  private extractMetadata(yamlData: YAMLTreeNode): MetadataData {
+    const titleNode = yamlData.nodes?.find((node) => node.key?.toLowerCase() === 'title');
+    const versionNode = yamlData.nodes?.find((node) => node.key?.toLowerCase() === 'version');
+    const authorsNode = yamlData.nodes?.find((node) => node.key?.toLowerCase() === 'authors');
+
+    return {
+      title: titleNode?.value ?? "",
+      version: versionNode?.value ?? "",
+      authors: authorsNode?.nodes
+        ?.map((node) => node.value ?? node.key ?? "")
+        .filter((value) => value.trim().length > 0) ?? [""],
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import GuideView from '../views/GuideView.vue'
 import FileView from '@/views/FileView.vue'
+import EditorView from '@/views/EditorView.vue'
 import LoadView from '@/views/LoadView.vue'
 import { useFileStore } from '@/store/fileStore';
 
@@ -18,6 +19,11 @@ const router = createRouter({
       component: FileView,
     },
     {
+      path: "/editor/:id",
+      name: 'Editor',
+      component: EditorView,
+    },
+    {
       path: "/",
       name: 'Load File',
       component: LoadView,
@@ -26,7 +32,9 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (to.path === '/view') {
+  const isFileRoute = to.path.startsWith('/view/') || to.path.startsWith('/editor/')
+
+  if (isFileRoute) {
     const fileStore = useFileStore()
 
     const id = Number(to.params.id)

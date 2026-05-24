@@ -2,13 +2,17 @@
 import { AppBarService, AppBarServiceKey } from "@/services/app-bar-service";
 import { useFileStore } from "@/store/fileStore";
 import { ref, watch, computed, onMounted, onBeforeUnmount, inject } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 
 const fileStore = useFileStore();
 const route = useRoute();
+const router = useRouter();
 
-const showFileActions = computed(() => route.path.startsWith("/view"));
+const showFileActions = computed(
+  () => route.path.startsWith("/view/") || route.path.startsWith("/editor/"),
+);
+const currentFileId = computed(() => Number(route.params.id ?? -1));
 
 const appBarService = inject<AppBarService>(AppBarServiceKey);
 
@@ -34,9 +38,35 @@ const showRail = computed(() => smAndUp.value && isRail.value);
 const showFab = ref(true);
 let lastScrollY = 0;
 
+function viewModeRoute() {
+  return `/view/${currentFileId.value}`;
+}
+
+function editorModeRoute() {
+  return `/editor/${currentFileId.value}`;
+}
+
+function handleToggleMode() {
+  fileStore.toggleEditing();
+
+  if (currentFileId.value < 0) {
+    return;
+  }
+
+  router.push({
+    path: fileStore.isEditing ? editorModeRoute() : viewModeRoute(),
+  });
+}
+
 async function printDocument() {
   try {
-    const id = Number(route.params.id ?? 0);
+    const id = currentFileId.value;
+    const file = fileStore.getFile(id);
+
+    if (!file) {
+      return;
+    }
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       throw new Error("Failed to open print window");
@@ -44,17 +74,15 @@ async function printDocument() {
 
     const doc = printWindow.document;
 
-    // Load the CSS file content
     const cssText = await import("@/assets/screenplay.css?raw");
 
-    // Create and inject <style> tag
     const style = doc.createElement("style");
     style.textContent = cssText.default;
     doc.head.appendChild(style);
 
     const spContainer = doc.createElement("div");
     spContainer.classList.add("sp-container");
-    spContainer.innerHTML = fileStore.getFile(id).content;
+    spContainer.innerHTML = file.content;
     doc.body.appendChild(spContainer);
     setTimeout(() => printWindow.print(), 1);
   } catch (error) {
@@ -121,6 +149,12 @@ onBeforeUnmount(() => {
         </template>
       </v-list>
       <v-list>
+        <v-list-item
+          v-if="showFileActions"
+          @click="handleToggleMode"
+          :prepend-icon="fileStore.isEditing ? 'mdi-eye' : 'mdi-pencil'"
+          :title="fileStore.isEditing ? 'View' : 'Edit'"
+        ></v-list-item>
         <v-list-item
           v-if="showFileActions"
           @click="printDocument"
