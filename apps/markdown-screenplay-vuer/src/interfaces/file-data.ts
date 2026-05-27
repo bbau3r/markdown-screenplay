@@ -8,6 +8,7 @@ export interface MetadataData {
 
 export interface FileData {
   content: string;
+  rawContent: string;
   scenes: SceneData[];
   characters: CharacterFileData[];
   fileName: string;

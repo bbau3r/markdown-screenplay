@@ -13,6 +13,7 @@ const buildFile = (): FileData => ({
         '<hr/>',
         '<p class="section">Body content</p>',
     ].join("\n"),
+    rawContent: "---\ntitle: Old Title\nauthor: Old Author\nversion: 1.0\n---\nBody content",
     scenes: [],
     characters: [],
     fileName: "sample.mdsp",

@@ -44,6 +44,7 @@ export class ReadFileService {
 
     return {
       content: results.output,
+      rawContent: content,
       scenes: results.scenes,
       characters,
       fileName,
