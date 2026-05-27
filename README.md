@@ -1,5 +1,7 @@
 # Markdown Screenplay
 
+![Markdown Screenplay logo](apps/markdown-screenplay-vuer/public/logo.png)
+
 ## Overview
 
 `Markdown Screenplay` is a lightweight way to write screenplays using a Markdown-like syntax. The goal is to make screenplay creation easier by keeping the authoring format simple, readable, and portable while still supporting structured rendering in a viewer.
