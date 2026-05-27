@@ -58,6 +58,25 @@ function handleToggleMode() {
   });
 }
 
+function saveDocument() {
+  const id = currentFileId.value;
+  const file = fileStore.getFile(id);
+
+  if (!file) {
+    return;
+  }
+
+  const blob = new Blob([file.rawContent], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = file.fileName || "screenplay.mdsp";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 async function printDocument() {
   try {
     const id = currentFileId.value;
@@ -154,6 +173,12 @@ onBeforeUnmount(() => {
           @click="handleToggleMode"
           :prepend-icon="fileStore.isEditing ? 'mdi-eye' : 'mdi-pencil'"
           :title="fileStore.isEditing ? 'View' : 'Edit'"
+        ></v-list-item>
+        <v-list-item
+          v-if="showFileActions"
+          @click="saveDocument"
+          prepend-icon="mdi-download"
+          title="Save"
         ></v-list-item>
         <v-list-item
           v-if="showFileActions"
