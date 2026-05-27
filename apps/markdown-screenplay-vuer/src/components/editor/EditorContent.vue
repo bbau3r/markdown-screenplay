@@ -1,62 +1,151 @@
 <script setup lang="ts">
-import { ref, nextTick } from "vue";
+import { ref, watch, nextTick, onMounted } from "vue";
 import { useEditorStore } from "@/store/editorStore";
 import EditorElement from "./EditorElement.vue";
-import EditorInputBar from "./EditorInputBar.vue";
 import type { ScreenplayElementType } from "@transformers";
 
 const editorStore = useEditorStore();
 
-const inlineInputRef = ref<InstanceType<typeof EditorInputBar> | null>(null);
-const bottomInputRef = ref<InstanceType<typeof EditorInputBar> | null>(null);
+// Enforce that the editor always has top and bottom empty action lines as placeholders
+watch(
+  () => editorStore.elements,
+  () => {
+    editorStore.ensurePlaceholders();
+  },
+  { deep: true, immediate: true },
+);
 
-// ── Element event handlers ───────────────────────────────────────
+// ── Focus/Caret Positioning Helper ──────────────────────────────
 
-function handleSelect(id: string) {
-  editorStore.selectElement(
-    editorStore.selectedElementId === id ? null : id,
-  );
+function focusElement(id: string, caretPosition: 'start' | 'end' | number = 'end') {
+  nextTick(() => {
+    const el = document.querySelector(`[data-id="${id}"] .editor-element__content`) as HTMLElement;
+    if (el) {
+      el.focus();
+      
+      const range = document.createRange();
+      const selection = window.getSelection();
+      if (!selection) return;
+
+      let offset = 0;
+      if (caretPosition === "start") {
+        offset = 0;
+      } else if (caretPosition === "end") {
+        offset = el.innerText.length;
+      } else if (typeof caretPosition === "number") {
+        offset = caretPosition;
+      }
+
+      let currentOffset = 0;
+      let targetNode: Node | null = null;
+      let relativeOffset = 0;
+
+      function traverse(node: Node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const len = node.textContent?.length || 0;
+          if (currentOffset + len >= offset) {
+            targetNode = node;
+            relativeOffset = offset - currentOffset;
+            return true;
+          }
+          currentOffset += len;
+        } else {
+          for (let i = 0; i < node.childNodes.length; i++) {
+            if (traverse(node.childNodes[i])) return true;
+          }
+        }
+        return false;
+      }
+
+      traverse(el);
+
+      if (targetNode) {
+        range.setStart(targetNode, relativeOffset);
+      } else {
+        range.selectNodeContents(el);
+      }
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  });
+}
+
+// ── Click Canvas to Focus ──────────────────────────────────────────
+
+function handleCanvasClick(event: MouseEvent) {
+  // If clicking directly on the canvas background, focus the last element
+  const target = event.target as HTMLElement;
+  if (target.classList.contains("editor-content") || target.classList.contains("editor-content__elements")) {
+    event.preventDefault();
+    if (editorStore.elements.length > 0) {
+      const lastEl = editorStore.elements[editorStore.elements.length - 1];
+      editorStore.selectElement(lastEl.id);
+      focusElement(lastEl.id, "end");
+    }
+  }
+}
+
+// ── Element Coordination Handlers ────────────────────────────────
+
+function handleSelect(payload: { id: string; isShift: boolean; isCtrl: boolean }) {
+  editorStore.selectElement(payload.id, payload.isShift, payload.isCtrl);
 }
 
 function handleUpdateText(payload: { id: string; text: string }) {
   editorStore.updateElementText(payload.id, payload.text);
 }
 
-function handleRemove(id: string) {
-  editorStore.removeElement(id);
+function handleUpdateType(payload: { id: string; type: ScreenplayElementType }) {
+  editorStore.updateElementType(payload.id, payload.type);
 }
 
-function handleInsertAfter(id: string) {
-  editorStore.showInlineInputAfter(id);
-  nextTick(() => inlineInputRef.value?.focus());
-}
-
-// ── Input bar handlers ───────────────────────────────────────────
-
-function handleBottomSubmit(payload: { type: ScreenplayElementType; text: string }) {
-  editorStore.addElement(payload.type, payload.text);
-}
-
-function handleInlineSubmit(payload: { type: ScreenplayElementType; text: string }) {
-  const afterId = editorStore.inlineInputAfterElementId;
-  if (afterId) {
-    editorStore.insertElementAfter(afterId, payload.type, payload.text);
-  } else {
-    editorStore.addElement(payload.type, payload.text);
+function handleSplit(payload: { id: string; text1: string; text2: string }) {
+  const newEl = editorStore.splitElement(payload.id, payload.text1, payload.text2);
+  if (newEl) {
+    focusElement(newEl.id, "start");
   }
-  editorStore.showInlineInputAfter(null);
 }
 
-function handleInlineCancel() {
-  editorStore.showInlineInputAfter(null);
+function handleMergePrevious(id: string) {
+  const result = editorStore.mergeWithPrevious(id);
+  if (result) {
+    focusElement(result.mergedId, result.cursorOffset);
+  }
 }
 
-// ── Global keyboard ─────────────────────────────────────────────
+function handleNavigate(payload: { id: string; direction: "up" | "down"; isShift: boolean }) {
+  const idx = editorStore.elements.findIndex((e) => e.id === payload.id);
+  if (idx < 0) return;
+
+  if (payload.direction === "up" && idx > 0) {
+    const targetEl = editorStore.elements[idx - 1];
+    editorStore.selectElement(targetEl.id, payload.isShift);
+    focusElement(targetEl.id, "end");
+  } else if (payload.direction === "down" && idx < editorStore.elements.length - 1) {
+    const targetEl = editorStore.elements[idx + 1];
+    editorStore.selectElement(targetEl.id, payload.isShift);
+    focusElement(targetEl.id, "start");
+  }
+}
+
+// ── Global Actions ───────────────────────────────────────────────
 
 function handleContainerKeydown(event: KeyboardEvent) {
   if (event.key === "Escape") {
     editorStore.selectElement(null);
-    editorStore.showInlineInputAfter(null);
+  }
+
+  // Handle deletion of multiple selected elements
+  if (
+    (event.key === "Backspace" || event.key === "Delete") &&
+    editorStore.selectedElementIds.length > 1
+  ) {
+    event.preventDefault();
+    const nextFocusId = editorStore.deleteSelectedElements();
+    if (nextFocusId) {
+      focusElement(nextFocusId, "end");
+    }
   }
 }
 </script>
@@ -65,48 +154,24 @@ function handleContainerKeydown(event: KeyboardEvent) {
   <div
     class="editor-content"
     @keydown="handleContainerKeydown"
-    @click.self="editorStore.selectElement(null)"
+    @mousedown="handleCanvasClick"
   >
-    <!-- Empty state -->
-    <div v-if="editorStore.elements.length === 0" class="editor-content__empty">
-      <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-script-text-outline</v-icon>
-      <p class="text-h6 text-medium-emphasis">No elements yet</p>
-      <p class="text-body-2 text-disabled">
-        Use the input bar below to add screenplay elements.<br />
-        Type a prefix (<code>#</code> <code>:</code> <code>&gt;</code> <code>&gt;&gt;</code>)
-        followed by a space to set the element type.
-      </p>
-    </div>
-
     <!-- Element list -->
     <div class="editor-content__elements sp-container">
-      <template v-for="element in editorStore.elements" :key="element.id">
-        <EditorElement
-          :element="element"
-          :is-selected="editorStore.selectedElementId === element.id"
-          @select="handleSelect"
-          @update:text="handleUpdateText"
-          @remove="handleRemove"
-          @insert-after="handleInsertAfter"
-        />
-
-        <!-- Inline input bar (shown after this element when Enter is pressed) -->
-        <EditorInputBar
-          v-if="editorStore.inlineInputAfterElementId === element.id"
-          ref="inlineInputRef"
-          placeholder="New element… (prefix + space to set type)"
-          @submit="handleInlineSubmit"
-          @cancel="handleInlineCancel"
-        />
-      </template>
+      <EditorElement
+        v-for="(element, index) in editorStore.elements"
+        :key="element.id"
+        :element="element"
+        :is-selected="editorStore.selectedElementIds.includes(element.id)"
+        :is-placeholder="index === 0 || index === editorStore.elements.length - 1"
+        @select="handleSelect"
+        @update:text="handleUpdateText"
+        @update:type="handleUpdateType"
+        @split="handleSplit"
+        @merge-previous="handleMergePrevious"
+        @navigate="handleNavigate"
+      />
     </div>
-
-    <!-- Sticky bottom input bar -->
-    <EditorInputBar
-      ref="bottomInputRef"
-      :is-bottom="true"
-      @submit="handleBottomSubmit"
-    />
   </div>
 </template>
 
@@ -116,32 +181,13 @@ function handleContainerKeydown(event: KeyboardEvent) {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: 16px;
-  gap: 0;
-}
-
-.editor-content__empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 48px 24px;
-  opacity: 0.85;
-}
-
-.editor-content__empty code {
-  background: rgba(var(--v-theme-primary), 0.12);
-  color: rgb(var(--v-theme-primary));
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-family: "Fira Code", monospace;
-  font-size: 0.9em;
+  padding: 24px 16px;
+  cursor: text;
+  background: transparent;
 }
 
 .editor-content__elements {
   flex: 1;
-  padding-bottom: 80px; /* space for sticky bottom bar */
+  padding-bottom: 120px; /* Comfortable bottom scrolling margin */
 }
 </style>

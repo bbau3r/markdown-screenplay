@@ -1,30 +1,45 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from "vue";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
 import type { ScreenplayElement, ScreenplayElementType } from "@transformers";
 
 const props = defineProps<{
   element: ScreenplayElement;
   isSelected: boolean;
+  isPlaceholder?: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: "select", id: string): void;
+  (
+    e: "select",
+    payload: { id: string; isShift: boolean; isCtrl: boolean },
+  ): void;
   (e: "update:text", payload: { id: string; text: string }): void;
-  (e: "remove", id: string): void;
-  (e: "insert-after", id: string): void;
+  (e: "update:type", payload: { id: string; type: ScreenplayElementType }): void;
+  (e: "split", payload: { id: string; text1: string; text2: string }): void;
+  (e: "merge-previous", id: string): void;
+  (
+    e: "navigate",
+    payload: { id: string; direction: "up" | "down"; isShift: boolean },
+  ): void;
 }>();
 
-const isEditing = ref(false);
-const editText = ref(props.element.text);
-const inputRef = ref<HTMLInputElement | null>(null);
+const editorRef = ref<HTMLDivElement | null>(null);
 
-// Keep editText in sync when element text changes externally
+// Keep editor content in sync with store changes when not focused
 watch(
   () => props.element.text,
   (newText) => {
-    if (!isEditing.value) editText.value = newText;
+    if (editorRef.value && document.activeElement !== editorRef.value) {
+      editorRef.value.innerText = newText;
+    }
   },
 );
+
+onMounted(() => {
+  if (editorRef.value) {
+    editorRef.value.innerText = props.element.text;
+  }
+});
 
 const elementClass = computed(() => {
   const classMap: Record<ScreenplayElementType, string> = {
@@ -40,6 +55,7 @@ const elementClass = computed(() => {
 });
 
 const typeLabel = computed(() => {
+  if (props.isPlaceholder) return "NEW";
   const labelMap: Record<ScreenplayElementType, string> = {
     "scene-heading": "SCENE",
     "scene-heading-sub": "SUB",
@@ -65,71 +81,239 @@ const typeColor = computed(() => {
   return colorMap[props.element.type] ?? "grey";
 });
 
-/** Display text — dialog characters are uppercased like the viewer */
-const displayText = computed(() => {
-  if (props.element.type === "dialog-character" || props.element.type === "scene-heading" || props.element.type === "scene-heading-sub") {
-    return props.element.text.toUpperCase();
-  }
-  if (props.element.type === "scene-transition") {
-    return props.element.text.toUpperCase() + ":";
-  }
-  if (props.element.type === "dialog-parenthetical") {
-    const t = props.element.text.trim();
-    return t.startsWith("(") ? t.toLowerCase() : `(${t.toLowerCase()})`;
-  }
-  return props.element.text;
-});
+// Selection helpers for caret tracking
+function getCaretOffset(element: HTMLElement): number {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return 0;
+  const range = selection.getRangeAt(0);
+  
+  let offset = 0;
+  const node = range.startContainer;
+  const targetOffset = range.startOffset;
 
-function handleClick() {
-  emit("select", props.element.id);
+  if (!element.contains(node) && element !== node) {
+    return 0;
+  }
+
+  const walker = document.createTreeWalker(
+    element,
+    NodeFilter.SHOW_TEXT,
+    null
+  );
+
+  while (walker.nextNode()) {
+    const currentNode = walker.currentNode;
+    if (currentNode === node) {
+      offset += targetOffset;
+      return offset;
+    }
+    offset += currentNode.textContent?.length || 0;
+  }
+
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    let childOffset = 0;
+    for (let i = 0; i < targetOffset && i < node.childNodes.length; i++) {
+      const child = node.childNodes[i];
+      if (element.contains(child)) {
+        childOffset += child.textContent?.length || 0;
+      }
+    }
+    return childOffset;
+  }
+
+  return offset;
 }
 
-function startEdit() {
-  isEditing.value = true;
-  editText.value = props.element.text;
-  nextTick(() => inputRef.value?.focus());
+function isCaretAtStart(): boolean {
+  if (!editorRef.value) return false;
+  return getCaretOffset(editorRef.value) === 0;
 }
 
-function commitEdit() {
-  isEditing.value = false;
-  const trimmed = editText.value.trim();
-  if (trimmed !== props.element.text) {
-    emit("update:text", { id: props.element.id, text: trimmed });
+function setCursorOffset(element: HTMLElement, offset: number) {
+  const range = document.createRange();
+  const selection = window.getSelection();
+  if (!selection) return;
+
+  let currentOffset = 0;
+  let targetNode: Node | null = null;
+  let relativeOffset = 0;
+
+  function traverse(node: Node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const len = node.textContent?.length || 0;
+      if (currentOffset + len >= offset) {
+        targetNode = node;
+        relativeOffset = offset - currentOffset;
+        return true;
+      }
+      currentOffset += len;
+    } else {
+      for (let i = 0; i < node.childNodes.length; i++) {
+        if (traverse(node.childNodes[i])) return true;
+      }
+    }
+    return false;
   }
+
+  traverse(element);
+
+  if (targetNode) {
+    range.setStart(targetNode, relativeOffset);
+  } else {
+    range.selectNodeContents(element);
+  }
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function handleInput(e: Event) {
+  const target = e.target as HTMLDivElement;
+  let text = target.innerText;
+
+  // Smart dialogue typing auto-convert to parenthetical if typing opens with a parenthesis
+  if (props.element.type === "dialog" && text.startsWith("(")) {
+    emit("update:type", { id: props.element.id, type: "dialog-parenthetical" });
+  } else if (props.element.type === "dialog-parenthetical" && !text.startsWith("(")) {
+    emit("update:type", { id: props.element.id, type: "dialog" });
+  }
+
+  emit("update:text", { id: props.element.id, text });
 }
 
 function handleKeydown(event: KeyboardEvent) {
+  // 1. Enter key: split element
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
-    commitEdit();
-    emit("insert-after", props.element.id);
+    if (editorRef.value) {
+      const offset = getCaretOffset(editorRef.value);
+      
+      const text = editorRef.value.innerText;
+      const text1 = text.slice(0, offset);
+      const text2 = text.slice(offset);
+      
+      // Update DOM and store immediately to prevent text retention in current element
+      editorRef.value.innerText = text1;
+      
+      emit("split", { id: props.element.id, text1, text2 });
+    }
   }
-  if (event.key === "Escape") {
-    event.preventDefault();
-    editText.value = props.element.text; // revert
-    isEditing.value = false;
+
+  // 2. Space key: check markdown prefix shortcuts
+  if (event.key === " ") {
+    if (editorRef.value) {
+      const offset = getCaretOffset(editorRef.value);
+      const text = editorRef.value.innerText;
+      const prefix = text.slice(0, offset);
+      const prefixes = ["##", "#", ">>", ">", ":"];
+      
+      if (prefixes.includes(prefix)) {
+        event.preventDefault();
+        const typeMap: Record<string, ScreenplayElementType> = {
+          "##": "scene-heading-sub",
+          "#": "scene-heading",
+          ">>": "dialog",
+          ">": "dialog-character",
+          ":": "scene-transition",
+        };
+        const newType = typeMap[prefix];
+        const remainingText = text.slice(offset);
+        
+        emit("update:type", { id: props.element.id, type: newType });
+        
+        editorRef.value.innerText = remainingText;
+        emit("update:text", { id: props.element.id, text: remainingText });
+        
+        nextTick(() => {
+          if (editorRef.value) {
+            setCursorOffset(editorRef.value, 0);
+          }
+        });
+        return;
+      }
+    }
   }
-  if (event.key === "Backspace" && editText.value === "") {
-    event.preventDefault();
-    isEditing.value = false;
-    emit("remove", props.element.id);
+
+  // 3. Backspace/Delete key: remove type, delete, or merge with previous
+  if (event.key === "Backspace" || event.key === "Delete") {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed) {
+        const selectedTextLength = range.toString().length;
+        const elementTextLength = editorRef.value?.innerText.length || 0;
+        if (selectedTextLength === elementTextLength) {
+          // 1. Entire element is selected -> Delete element without merging text
+          event.preventDefault();
+          if (editorRef.value) {
+            editorRef.value.innerText = "";
+          }
+          emit("update:text", { id: props.element.id, text: "" });
+          emit("merge-previous", props.element.id);
+          return;
+        } else if (event.key === "Backspace" && isCaretAtStart()) {
+          // 2. Part of the element is selected and Backspace pressed -> Delete selected text but don't merge
+          return;
+        }
+      } else if (event.key === "Backspace" && isCaretAtStart()) {
+        // 3. Only merge if no text is selected (caret is collapsed) on Backspace
+        if (props.element.text === "" || props.element.type === "action") {
+          event.preventDefault();
+          emit("merge-previous", props.element.id);
+        } else {
+          event.preventDefault();
+          emit("update:type", { id: props.element.id, type: "action" });
+          nextTick(() => {
+            if (editorRef.value) {
+              setCursorOffset(editorRef.value, 0);
+            }
+          });
+        }
+      }
+    }
+  }
+
+  // 4. Arrow keys: move focus between elements
+  if (event.key === "ArrowUp") {
+    if (isCaretAtStart()) {
+      event.preventDefault();
+      emit("navigate", {
+        id: props.element.id,
+        direction: "up",
+        isShift: event.shiftKey,
+      });
+    }
+  }
+  if (event.key === "ArrowDown") {
+    if (editorRef.value) {
+      const offset = getCaretOffset(editorRef.value);
+      const textLen = editorRef.value.innerText.length;
+      if (offset === textLen) {
+        event.preventDefault();
+        emit("navigate", {
+          id: props.element.id,
+          direction: "down",
+          isShift: event.shiftKey,
+        });
+      }
+    }
   }
 }
 
-function handleOuterKeydown(event: KeyboardEvent) {
-  if (isEditing.value) return;
+function handleClick(event: MouseEvent) {
+  emit("select", {
+    id: props.element.id,
+    isShift: event.shiftKey,
+    isCtrl: event.ctrlKey || event.metaKey,
+  });
+}
 
-  if (
-    (event.key === "Backspace" || event.key === "Delete") &&
-    props.isSelected
-  ) {
-    event.preventDefault();
-    emit("remove", props.element.id);
-  }
-  if (event.key === "Enter" && props.isSelected) {
-    event.preventDefault();
-    startEdit();
-  }
+function handleFocus() {
+  emit("select", {
+    id: props.element.id,
+    isShift: false,
+    isCtrl: false,
+  });
 }
 </script>
 
@@ -138,15 +322,14 @@ function handleOuterKeydown(event: KeyboardEvent) {
     :class="[
       'editor-element',
       { 'editor-element--selected': isSelected },
+      { 'editor-element--placeholder': isPlaceholder },
     ]"
-    tabindex="0"
-    @click.stop="handleClick"
-    @dblclick.stop="startEdit"
-    @keydown="handleOuterKeydown"
+    :data-id="element.id"
+    @click="handleClick"
   >
-    <!-- Type badge -->
+    <!-- Type badge (subtle indicator, only visible on hover or focus) -->
     <v-chip
-      :color="typeColor"
+      :color="isPlaceholder ? 'grey-darken-1' : typeColor"
       size="x-small"
       variant="tonal"
       class="editor-element__badge"
@@ -155,22 +338,16 @@ function handleOuterKeydown(event: KeyboardEvent) {
       {{ typeLabel }}
     </v-chip>
 
-    <!-- Content area -->
-    <div :class="['editor-element__content', elementClass]">
-      <template v-if="isEditing">
-        <input
-          ref="inputRef"
-          v-model="editText"
-          class="editor-element__edit-input"
-          @blur="commitEdit"
-          @keydown="handleKeydown"
-          spellcheck="true"
-        />
-      </template>
-      <template v-else>
-        <span class="editor-element__display">{{ displayText }}</span>
-      </template>
-    </div>
+    <!-- Content area: Always editable -->
+    <div
+      ref="editorRef"
+      contenteditable="true"
+      :class="['editor-element__content', elementClass]"
+      @input="handleInput"
+      @keydown="handleKeydown"
+      @focus="handleFocus"
+      spellcheck="true"
+    ></div>
   </div>
 </template>
 
@@ -178,40 +355,53 @@ function handleOuterKeydown(event: KeyboardEvent) {
 .editor-element {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 12px;
   padding: 6px 12px;
-  margin: 2px 0;
-  border-radius: 8px;
+  margin: 1px 0;
+  border-radius: 6px;
   border: 1.5px solid transparent;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  outline: none;
+  cursor: text;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
   position: relative;
 }
 
 .editor-element:hover {
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  border-color: rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.editor-element--placeholder {
+  opacity: 0.35;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
+.editor-element--placeholder:hover,
+.editor-element--placeholder:focus-within {
+  opacity: 0.85;
 }
 
 .editor-element--selected {
-  background: rgba(var(--v-theme-primary), 0.06);
-  border-color: rgba(var(--v-theme-primary), 0.35);
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.1);
+  background: rgba(var(--v-theme-primary), 0.04) !important;
+  border-color: rgba(var(--v-theme-primary), 0.15);
 }
 
-.editor-element--selected:hover {
-  background: rgba(var(--v-theme-primary), 0.08);
-}
-
+/* Badge starts transparent and animates in on hover or when element is focused within */
 .editor-element__badge {
   flex-shrink: 0;
-  margin-top: 3px;
+  margin-top: 4px;
   font-family: "Fira Code", monospace;
   font-size: 10px !important;
   letter-spacing: 0.5px;
-  min-width: 48px;
+  min-width: 52px;
   justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  user-select: none;
+}
+
+.editor-element:hover .editor-element__badge,
+.editor-element:focus-within .editor-element__badge {
+  opacity: 0.75;
 }
 
 .editor-element__content {
@@ -220,15 +410,22 @@ function handleOuterKeydown(event: KeyboardEvent) {
   font-size: var(--sd-font-size, 16px);
   line-height: 1.6;
   min-height: 1.6em;
+  outline: none;
+  border: none;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-/* Screenplay-style classes applied to content */
+/* Screenplay-style alignment and transforms auto-baked in */
 .editor-element__content.scene-heading {
   font-weight: 800;
+  text-transform: uppercase;
 }
 
 .editor-element__content.scene-transition {
   text-align: right;
+  text-transform: uppercase;
+  font-weight: 800;
 }
 
 .editor-element__content.dialog {
@@ -245,27 +442,7 @@ function handleOuterKeydown(event: KeyboardEvent) {
 .editor-element__content.dialog-heading {
   margin-left: var(--sd-dialog-heading-padding, 10rem);
   margin-right: var(--sd-dialog-heading-padding, 10rem);
-}
-
-.editor-element__display {
-  display: block;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.editor-element__edit-input {
-  width: 100%;
-  border: none;
-  outline: none;
-  background: rgba(var(--v-theme-primary), 0.04);
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  font-weight: inherit;
-  font-style: inherit;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border-bottom: 2px solid rgb(var(--v-theme-primary));
+  text-transform: uppercase;
+  font-weight: 800;
 }
 </style>

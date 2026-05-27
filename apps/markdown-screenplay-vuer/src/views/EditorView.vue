@@ -26,19 +26,28 @@ watch(
   { immediate: true },
 );
 
-// Load the raw content into the editor store when the file changes
-onMounted(() => {
-  if (file.value?.rawContent) {
+function loadFileIntoEditor() {
+  if (file.value) {
     editorStore.loadFromRawContent(file.value.rawContent);
     editorStore.setMetadata({ ...file.value.metadata });
   }
+}
+
+onMounted(() => {
+  loadFileIntoEditor();
 });
 
+// Reload editor if we switch to a different file
+watch(fileId, () => {
+  loadFileIntoEditor();
+});
+
+// Watch editor contents and write back to fileStore to keep viewer in sync
 watch(
-  () => file.value?.rawContent,
-  (rawContent) => {
-    if (rawContent) {
-      editorStore.loadFromRawContent(rawContent);
+  () => editorStore.serializedMdsp,
+  (newBody) => {
+    if (file.value) {
+      fileStore.updateBody(fileId.value, newBody);
     }
   },
 );

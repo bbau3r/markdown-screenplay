@@ -101,6 +101,21 @@ export const useFileStore = defineStore('files', {
         content,
       };
     },
+    updateBody(index: number, bodyContent: string) {
+      const file = this.files[index];
+      if (!file) {
+        return;
+      }
+
+      const rawContent = buildYamlFrontmatter(file.metadata) + "\n" + bodyContent;
+      const content = rebuildContent(rawContent, file.metadata);
+
+      this.files[index] = {
+        ...file,
+        rawContent,
+        content,
+      };
+    },
     setEditing(value: boolean) {
       this.isEditing = value;
     },
