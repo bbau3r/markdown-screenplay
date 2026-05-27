@@ -1,32 +1,16 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useDisplay } from "vuetify";
 import CharactersSection from "@/components/viewer/CharactersSection.vue";
 import SceneSection from "@/components/viewer/SceneSection.vue";
 import { useFileStore } from "@/store/fileStore";
 import { useRoute } from "vue-router";
-import type { FileData } from "@/interfaces/file-data";
 
 const { mdAndUp } = useDisplay();
 const fileStore = useFileStore();
 const route = useRoute();
 
-watch(
-  () => route.params.id,
-  (newVal) => {
-    console.log(newVal);
-    const id = Number(newVal ?? 0);
-    getFileContents(id);
-  }
-);
-
-function getFileContents(id: number) {
-  file.value = fileStore.getFile(id) ?? undefined;
-}
-
-const file = ref<FileData | null>(null);
-
-getFileContents(Number(route.params.id));
+const file = computed(() => fileStore.getFile(Number(route.params.id)) ?? null);
 
 const drawer = ref(false);
 const tabs = ref(1);

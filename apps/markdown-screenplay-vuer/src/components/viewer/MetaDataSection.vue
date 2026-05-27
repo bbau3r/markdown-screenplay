@@ -73,21 +73,21 @@ const removeAuthor = (index: number) => {
         <v-expansion-panel-title>
           <div class="d-flex align-center justify-space-between w-100">
             <span class="text-subtitle-1 font-weight-bold">Metadata</span>
-            <v-chip color="primary" size="small" variant="tonal"> Edit </v-chip>
           </div>
         </v-expansion-panel-title>
         <v-expansion-panel-text>
           <div class="d-flex flex-column ga-4">
+            <div class="text-body-2 font-weight-medium">Title</div>
             <v-text-field
               v-model="draft.title"
-              label="Title"
               variant="outlined"
               density="comfortable"
               hide-details
             />
+
+            <div class="text-body-2 font-weight-medium">Version</div>
             <v-text-field
               v-model="draft.version"
-              label="Version"
               variant="outlined"
               density="comfortable"
               hide-details
@@ -115,7 +115,6 @@ const removeAuthor = (index: number) => {
                 >
                   <v-text-field
                     v-model="draft.authors[index]"
-                    :label="`Author ${index + 1}`"
                     variant="outlined"
                     density="comfortable"
                     hide-details
