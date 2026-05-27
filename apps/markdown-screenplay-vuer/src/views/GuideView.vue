@@ -51,11 +51,11 @@ code,
     <ul>
       <li><code>:</code> Scene Transition (e.g., <code>: CUT TO:</code>)</li>
       <li>
-        <code>@</code> Scene Heading (e.g., <code>@ INT. KITCHEN – NIGHT</code>)
+        <code>#</code> Scene Heading (e.g., <code># INT. KITCHEN - NIGHT</code>)
       </li>
       <li>
-        <code>@@</code> Scene Secondary Heading (e.g.,
-        <code>@@ EXT. HOUSE – NIGHT</code>)
+        <code>##</code> Scene Secondary Heading (e.g.,
+        <code>## EXT. HOUSE - NIGHT</code>)
       </li>
       <li><code>></code> Character name / dialog block initiator</li>
       <li>
@@ -94,11 +94,9 @@ code,
     like this:
     <v-sheet class="ma-2 pa-4" :elevation="12" rounded>
       <div class="inline-code">
-        --- <br />
         authors: <br />
         &nbsp;&nbsp;- Brian <br />
         &nbsp;&nbsp;- Alaa <br />
-        ---
       </div>
     </v-sheet>
 
@@ -135,7 +133,7 @@ code,
     <h4>Supported Character Tagging Methods:</h4>
     <ul>
       <li>
-        <code>&Elia</code> or <code>&(Morgan V)</code> — Marks Elia and Morgan
+        <code>@Elia</code> or <code>@(Morgan V)</code> — Marks Elia and Morgan
         as present or referenced in the scene. The parenthesis form is required
         when the reference name includes spaces.
       </li>
@@ -149,12 +147,12 @@ code,
     <v-sheet class="ma-2 pa-4" :elevation="12" rounded>
       <div class="inline-code">
         <span class="syntax-highlight">:</span> Fade In<br />
-        <span class="syntax-highlight">@</span> EXT. PLATFORM – NIGHT<br />
-        The train screeches into view as &(Morgan V) checks her watch.<br />
+        <span class="syntax-highlight">#</span> EXT. PLATFORM - NIGHT<br />
+        The train screeches into view as @(Morgan V) checks her watch.<br />
         <span class="syntax-highlight">></span> [Momo](Morgan V)<br />
         <span class="syntax-highlight">>></span> (tense)<br />
-        <span class="syntax-highlight">>></span> We’re out of time.<br />
-        The wind catches her coat as &Elia arrives.
+        <span class="syntax-highlight">>></span> We're out of time.<br />
+        The wind catches her coat as @Elia arrives.
       </div>
     </v-sheet>
     <p>

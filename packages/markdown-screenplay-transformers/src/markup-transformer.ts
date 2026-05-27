@@ -4,7 +4,6 @@ import { YAMLParser } from "./yaml-parser";
 export class MarkupTransformer<T extends TransformTarget<U>, U> {
 
   private _handleYaml: boolean = false;
-  private _handleNewScene = false;
   private _yamlParser: YAMLParser;
   private _scenes: SceneData[] = [];
 
@@ -48,10 +47,10 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
     switch (true) {
       case line.length === 0:
         return;
-      case line.startsWith("@@"):
+      case line.startsWith("##"):
         this.appendScene(line, false);
         break;
-      case line.startsWith("@"):
+      case line.startsWith("#"):
         this.appendScene(line, true);
         break;
       case line.startsWith(":"):

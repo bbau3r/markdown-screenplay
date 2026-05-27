@@ -15,3 +15,4 @@ All implementations should interpret `.mdsp` consistently. This includes support
   - strikeout: `~text~`
   - superscript: `^[text]`
   - subscript: `_[text]`
+- `/` Can be used to escape any special characters to prevent interpretation
