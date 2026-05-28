@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from "vue";
+import { watch, nextTick } from "vue";
 import { useEditorStore } from "@/store/editorStore";
 import EditorElement from "./EditorElement.vue";
 import type { ScreenplayElementType } from "@transformers";

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RouterView, useRoute, useRouter } from "vue-router";
+import { RouterView, useRouter } from "vue-router";
 import AppBar from "./components/AppBar.vue";
 import { useDisplay } from "vuetify";
 import { AppBarService, AppBarServiceKey } from "./services/app-bar-service";
@@ -8,7 +8,6 @@ import { useFileStore } from "./store/fileStore";
 
 const { smAndUp } = useDisplay();
 const router = useRouter();
-const route = useRoute();
 const fileStore = useFileStore();
 
 const appBarService = new AppBarService();

@@ -324,7 +324,20 @@ function handleKeydown(event: KeyboardEvent) {
           emit("merge-previous", props.element.id);
         } else {
           event.preventDefault();
-          emit("update:type", { id: props.element.id, type: "action" });
+          const demotionMap: Record<
+            ScreenplayElementType,
+            ScreenplayElementType
+          > = {
+            "dialog-character": "action",
+            "dialog-parenthetical": "dialog",
+            dialog: "dialog-character",
+            "scene-heading-sub": "scene-heading",
+            "scene-heading": "action",
+            "scene-transition": "action",
+            action: "action",
+          };
+          const nextType = demotionMap[props.element.type] || "action";
+          emit("update:type", { id: props.element.id, type: nextType });
           nextTick(() => {
             if (editorRef.value) {
               setCursorOffset(editorRef.value, 0);
