@@ -2,6 +2,7 @@
 import { watch, nextTick } from "vue";
 import { useEditorStore } from "@/store/editorStore";
 import EditorElement from "./EditorElement.vue";
+import EditorHistoryControls from "./EditorHistoryControls.vue";
 import type { ScreenplayElementType } from "@transformers";
 
 const editorStore = useEditorStore();
@@ -181,6 +182,16 @@ function handleDelete(id: string) {
     focusElement(targetId, "end");
   }
 }
+
+function handleUndo() {
+  editorStore.undo();
+  restoreHistoryFocus();
+}
+
+function handleRedo() {
+  editorStore.redo();
+  restoreHistoryFocus();
+}
 </script>
 
 <template>
@@ -206,6 +217,12 @@ function handleDelete(id: string) {
         @delete="handleDelete"
       />
     </div>
+
+    <!-- Floating screen-pinned Undo/Redo controls component -->
+    <EditorHistoryControls
+      @undo="handleUndo"
+      @redo="handleRedo"
+    />
   </div>
 </template>
 
