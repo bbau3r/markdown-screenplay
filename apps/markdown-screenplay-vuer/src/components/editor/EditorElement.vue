@@ -14,13 +14,17 @@ const emit = defineEmits<{
     payload: { id: string; isShift: boolean; isCtrl: boolean },
   ): void;
   (e: "update:text", payload: { id: string; text: string }): void;
-  (e: "update:type", payload: { id: string; type: ScreenplayElementType }): void;
+  (
+    e: "update:type",
+    payload: { id: string; type: ScreenplayElementType },
+  ): void;
   (e: "split", payload: { id: string; text1: string; text2: string }): void;
   (e: "merge-previous", id: string): void;
   (
     e: "navigate",
     payload: { id: string; direction: "up" | "down"; isShift: boolean },
   ): void;
+  (e: "delete", id: string): void;
 }>();
 
 const editorRef = ref<HTMLDivElement | null>(null);
@@ -54,43 +58,99 @@ const elementClass = computed(() => {
   return classMap[props.element.type] ?? "section";
 });
 
-const typeLabel = computed(() => {
-  if (props.isPlaceholder) return "";
-  const labelMap: Record<ScreenplayElementType, string> = {
-    "scene-heading": "#",
-    "scene-heading-sub": "##",
-    "scene-transition": ":",
-    "dialog-character": ">",
-    dialog: ">>",
-    "dialog-parenthetical": ">>",
-    action: "",
-  };
-  return labelMap[props.element.type] ?? "";
+const typeOptions = [
+  {
+    value: "scene-heading" as ScreenplayElementType,
+    label: "#",
+    title: "Scene Heading",
+    description: "Starts a new scene",
+    color: "blue",
+  },
+  {
+    value: "scene-heading-sub" as ScreenplayElementType,
+    label: "##",
+    title: "Secondary Heading",
+    description: "Sub-heading or continuation",
+    color: "blue-lighten-2",
+  },
+  {
+    value: "action" as ScreenplayElementType,
+    label: "ACT",
+    title: "Action",
+    description: "Narrative description of action or character movements",
+    color: "grey",
+  },
+  {
+    value: "dialog-character" as ScreenplayElementType,
+    label: ">",
+    title: "Character",
+    description: "Name of the character speaking",
+    color: "purple",
+  },
+  {
+    value: "dialog-parenthetical" as ScreenplayElementType,
+    label: "()",
+    title: "Parenthetical",
+    description: "Indicates delivery, attitude, or action",
+    color: "teal-lighten-1",
+  },
+  {
+    value: "dialog" as ScreenplayElementType,
+    label: ">>",
+    title: "Dialogue",
+    description: "Lines of dialogue spoken by a character",
+    color: "teal",
+  },
+  {
+    value: "scene-transition" as ScreenplayElementType,
+    label: ":",
+    title: "Transition",
+    description: "Scene transitions on the right",
+    color: "orange",
+  },
+];
+
+const displayTagLabel = computed(() => {
+  if (props.isPlaceholder) return "new";
+  const opt = typeOptions.find((o) => o.value === props.element.type);
+  return opt ? opt.label : "ACT";
 });
 
-const shouldShowBadge = computed(() => {
-  return typeLabel.value !== "";
-});
+function selectType(type: ScreenplayElementType) {
+  emit("update:type", { id: props.element.id, type });
+  nextTick(() => {
+    if (editorRef.value) {
+      editorRef.value.focus();
+    }
+  });
+}
 
-const typeColor = computed(() => {
-  const colorMap: Record<ScreenplayElementType, string> = {
-    "scene-heading": "blue-lighten-1",
-    "scene-heading-sub": "blue-lighten-3",
-    "scene-transition": "orange",
-    "dialog-character": "purple-lighten-1",
-    dialog: "teal",
-    "dialog-parenthetical": "teal-lighten-2",
-    action: "grey",
-  };
-  return colorMap[props.element.type] ?? "grey";
-});
+function handleSelectTypeMenu(type: ScreenplayElementType) {
+  if (props.isPlaceholder) {
+    emit("update:type", { id: props.element.id, type });
+    emit("update:text", { id: props.element.id, text: " " });
+    emit("select", { id: props.element.id, isShift: false, isCtrl: false });
+    nextTick(() => {
+      if (editorRef.value) {
+        editorRef.value.focus();
+        setCursorOffset(editorRef.value, 1);
+      }
+    });
+  } else {
+    selectType(type);
+  }
+}
+
+function handleRemoveElement() {
+  emit("delete", props.element.id);
+}
 
 // Selection helpers for caret tracking
 function getCaretOffset(element: HTMLElement): number {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) return 0;
   const range = selection.getRangeAt(0);
-  
+
   let offset = 0;
   const node = range.startContainer;
   const targetOffset = range.startOffset;
@@ -99,11 +159,7 @@ function getCaretOffset(element: HTMLElement): number {
     return 0;
   }
 
-  const walker = document.createTreeWalker(
-    element,
-    NodeFilter.SHOW_TEXT,
-    null
-  );
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
 
   while (walker.nextNode()) {
     const currentNode = walker.currentNode;
@@ -174,11 +230,14 @@ function setCursorOffset(element: HTMLElement, offset: number) {
 function handleInput(e: Event) {
   const target = e.target as HTMLDivElement;
   let text = target.innerText;
-
+  cons;
   // Smart dialogue typing auto-convert to parenthetical if typing opens with a parenthesis
   if (props.element.type === "dialog" && text.startsWith("(")) {
     emit("update:type", { id: props.element.id, type: "dialog-parenthetical" });
-  } else if (props.element.type === "dialog-parenthetical" && !text.startsWith("(")) {
+  } else if (
+    props.element.type === "dialog-parenthetical" &&
+    !text.startsWith("(")
+  ) {
     emit("update:type", { id: props.element.id, type: "dialog" });
   }
 
@@ -191,14 +250,14 @@ function handleKeydown(event: KeyboardEvent) {
     event.preventDefault();
     if (editorRef.value) {
       const offset = getCaretOffset(editorRef.value);
-      
+
       const text = editorRef.value.innerText;
       const text1 = text.slice(0, offset);
       const text2 = text.slice(offset);
-      
+
       // Update DOM and store immediately to prevent text retention in current element
       editorRef.value.innerText = text1;
-      
+
       emit("split", { id: props.element.id, text1, text2 });
     }
   }
@@ -210,7 +269,7 @@ function handleKeydown(event: KeyboardEvent) {
       const text = editorRef.value.innerText;
       const prefix = text.slice(0, offset);
       const prefixes = ["##", "#", ">>", ">", ":"];
-      
+
       if (prefixes.includes(prefix)) {
         event.preventDefault();
         const typeMap: Record<string, ScreenplayElementType> = {
@@ -222,12 +281,12 @@ function handleKeydown(event: KeyboardEvent) {
         };
         const newType = typeMap[prefix];
         const remainingText = text.slice(offset);
-        
+
         emit("update:type", { id: props.element.id, type: newType });
-        
+
         editorRef.value.innerText = remainingText;
         emit("update:text", { id: props.element.id, text: remainingText });
-        
+
         nextTick(() => {
           if (editorRef.value) {
             setCursorOffset(editorRef.value, 0);
@@ -331,17 +390,90 @@ function handleFocus() {
     :data-id="element.id"
     @click="handleClick"
   >
-    <!-- Type badge (subtle indicator, only visible on hover or focus) -->
-    <v-chip
-      v-if="shouldShowBadge"
-      :color="isPlaceholder ? 'grey-darken-1' : typeColor"
-      size="x-small"
-      variant="tonal"
-      class="editor-element__badge"
-      label
-    >
-      {{ typeLabel }}
-    </v-chip>
+    <!-- Tag Column -->
+    <div class="editor-element__tag-col">
+      <v-menu location="bottom start" transition="scale-transition">
+        <template v-slot:activator="{ props: menuProps }">
+          <button
+            v-bind="menuProps"
+            type="button"
+            :class="[
+              'editor-element__tag-btn',
+              isPlaceholder
+                ? 'editor-element__tag-btn--new'
+                : `editor-element__tag-btn--${element.type}`,
+            ]"
+            @click.stop
+          >
+            {{ displayTagLabel }}
+          </button>
+        </template>
+        <v-list class="editor-element__menu-list" elevation="8" rounded="lg">
+          <!-- Element Type Options -->
+          <v-list-item
+            v-for="opt in typeOptions"
+            :key="opt.value"
+            @click="handleSelectTypeMenu(opt.value)"
+            :active="!isPlaceholder && element.type === opt.value"
+            color="primary"
+            class="py-2"
+          >
+            <template v-slot:prepend>
+              <v-chip
+                size="x-small"
+                :color="opt.color"
+                label
+                class="font-weight-bold mr-2"
+              >
+                {{ opt.label }}
+              </v-chip>
+            </template>
+            <div class="d-flex flex-column">
+              <span class="font-weight-bold text-body-2">{{ opt.title }}</span>
+              <span
+                class="text-caption text-medium-emphasis mt-0.5"
+                style="white-space: normal; max-width: 280px; line-height: 1.2"
+              >
+                {{ opt.description }}
+              </span>
+            </div>
+          </v-list-item>
+
+          <!-- Divider & Remove Option (Only for non-placeholder elements) -->
+          <template v-if="!isPlaceholder">
+            <v-divider class="my-1" />
+            <v-list-item
+              @click="handleRemoveElement"
+              class="py-2"
+            >
+              <template v-slot:prepend>
+                <v-chip
+                  size="x-small"
+                  color="error"
+                  label
+                  class="mr-2"
+                >
+                  <v-icon size="x-small">mdi-delete-outline</v-icon>
+                </v-chip>
+              </template>
+              <div class="d-flex flex-column">
+                <span class="font-weight-bold text-body-2 text-error">Remove</span>
+                <span
+                  class="text-caption text-medium-emphasis mt-0.5"
+                  style="
+                    white-space: normal;
+                    max-width: 280px;
+                    line-height: 1.2;
+                  "
+                >
+                  Delete this element from the screenplay
+                </span>
+              </div>
+            </v-list-item>
+          </template>
+        </v-list>
+      </v-menu>
+    </div>
 
     <!-- Content area: Always editable -->
     <div
@@ -366,7 +498,10 @@ function handleFocus() {
   border-radius: 6px;
   border: 1.5px solid transparent;
   cursor: text;
-  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
   position: relative;
 }
 
@@ -396,23 +531,72 @@ function handleFocus() {
   border-color: rgba(var(--v-theme-primary), 0.15);
 }
 
-/* Badge starts transparent and animates in on hover or when element is focused within */
-.editor-element__badge {
+.editor-element__tag-col {
+  width: 60px;
   flex-shrink: 0;
-  margin-top: 4px;
-  font-family: "Fira Code", monospace;
-  font-size: 10px !important;
-  letter-spacing: 0.2px;
-  min-width: 28px;
+  display: flex;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s ease;
+  align-items: flex-start;
+  margin-top: 4px;
   user-select: none;
 }
 
-.editor-element:hover .editor-element__badge,
-.editor-element:focus-within .editor-element__badge {
-  opacity: 0.75;
+.editor-element__tag-btn {
+  font-family: "Fira Code", monospace;
+  font-size: 10px;
+  font-weight: 800;
+  width: 44px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  transition: all 0.15s ease;
+  opacity: 0.4;
+  line-height: 1;
+  padding: 0;
+}
+
+.editor-element__tag-btn:hover,
+.editor-element:hover .editor-element__tag-btn,
+.editor-element:focus-within .editor-element__tag-btn {
+  opacity: 1;
+}
+
+.editor-element__tag-btn--scene-heading {
+  color: #2196f3;
+}
+.editor-element__tag-btn--scene-heading-sub {
+  color: #64b5f6;
+}
+.editor-element__tag-btn--action {
+  color: #757575;
+}
+.editor-element__tag-btn--dialog-character {
+  color: #9c27b0;
+}
+.editor-element__tag-btn--dialog-parenthetical {
+  color: #4db6ac;
+}
+.editor-element__tag-btn--dialog {
+  color: #009688;
+}
+.editor-element__tag-btn--scene-transition {
+  color: #ff9800;
+}
+
+.editor-element__tag-btn--new {
+  color: #9e9e9e;
+  border-style: dashed;
+}
+
+.editor-element__menu-list {
+  max-width: 320px;
 }
 
 .editor-element__content {
@@ -460,12 +644,17 @@ function handleFocus() {
 /* Responsive padding and margin adjustments for smaller/mobile screens */
 @media (max-width: 600px) {
   .editor-element {
-    gap: 8px;
+    gap: 6px;
     padding: 2px 4px;
   }
-  
-  .editor-element__badge {
-    margin-top: 2px;
+
+  .editor-element__tag-col {
+    width: 44px;
+  }
+
+  .editor-element__tag-btn {
+    width: 36px;
+    font-size: 9px;
   }
 
   .editor-element__content {

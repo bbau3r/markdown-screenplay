@@ -143,6 +143,17 @@ function handleContainerKeydown(event: KeyboardEvent) {
     }
   }
 }
+
+function handleDelete(id: string) {
+  const idx = editorStore.elements.findIndex((e) => e.id === id);
+  editorStore.removeElement(id);
+  
+  if (editorStore.elements.length > 0) {
+    const nextFocusIdx = Math.max(0, Math.min(idx - 1, editorStore.elements.length - 1));
+    const targetId = editorStore.elements[nextFocusIdx].id;
+    focusElement(targetId, "end");
+  }
+}
 </script>
 
 <template>
@@ -165,6 +176,7 @@ function handleContainerKeydown(event: KeyboardEvent) {
         @split="handleSplit"
         @merge-previous="handleMergePrevious"
         @navigate="handleNavigate"
+        @delete="handleDelete"
       />
     </div>
   </div>
