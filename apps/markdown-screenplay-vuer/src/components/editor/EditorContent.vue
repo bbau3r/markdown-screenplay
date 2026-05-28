@@ -74,15 +74,10 @@ function focusElement(id: string, caretPosition: 'start' | 'end' | number = 'end
 // ── Click Canvas to Focus ──────────────────────────────────────────
 
 function handleCanvasClick(event: MouseEvent) {
-  // If clicking directly on the canvas background, focus the last element
   const target = event.target as HTMLElement;
   if (target.classList.contains("editor-content") || target.classList.contains("editor-content__elements")) {
     event.preventDefault();
-    if (editorStore.elements.length > 0) {
-      const lastEl = editorStore.elements[editorStore.elements.length - 1];
-      editorStore.selectElement(lastEl.id);
-      focusElement(lastEl.id, "end");
-    }
+    editorStore.selectElement(null);
   }
 }
 
@@ -157,7 +152,7 @@ function handleContainerKeydown(event: KeyboardEvent) {
     @mousedown="handleCanvasClick"
   >
     <!-- Element list -->
-    <div class="editor-content__elements sp-container">
+    <div class="editor-content__elements editor-content__canvas">
       <EditorElement
         v-for="(element, index) in editorStore.elements"
         :key="element.id"
@@ -181,7 +176,7 @@ function handleContainerKeydown(event: KeyboardEvent) {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: 24px 16px;
+  padding: 0;
   cursor: text;
   background: transparent;
 }
@@ -189,5 +184,24 @@ function handleContainerKeydown(event: KeyboardEvent) {
 .editor-content__elements {
   flex: 1;
   padding-bottom: 120px; /* Comfortable bottom scrolling margin */
+  margin: 0 auto;
+  max-width: 800px;
+  width: 100%;
+}
+
+.editor-content__canvas {
+  font-family: Courier, "Courier New", monospace;
+  font-size: var(--sd-font-size, 18px);
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+  .editor-content__canvas {
+    padding: 4px;
+  }
+  .editor-content__elements {
+    padding-bottom: 60px;
+  }
 }
 </style>

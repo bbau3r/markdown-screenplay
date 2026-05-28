@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
 import MetaDataSection from "@/components/viewer/MetaDataSection.vue";
 import EditorContent from "@/components/editor/EditorContent.vue";
 import { useFileStore } from "@/store/fileStore";
@@ -11,6 +12,7 @@ const fileStore = useFileStore();
 const editorStore = useEditorStore();
 const route = useRoute();
 const router = useRouter();
+const { smAndUp } = useDisplay();
 
 const fileId = computed(() => Number(route.params.id));
 const file = computed(() => fileStore.getFile(fileId.value));
@@ -89,7 +91,7 @@ const handleMetadataUpdate = (metadata: MetadataData) => {
           </div>
 
           <!-- Editor body -->
-          <v-sheet class="editor-view__body ma-3" elevation="3" rounded="lg">
+          <v-sheet class="editor-view__body ma-sm-3 ma-0" elevation="3" :rounded="smAndUp ? 'lg' : '0'">
             <EditorContent />
           </v-sheet>
         </div>

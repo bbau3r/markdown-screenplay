@@ -55,17 +55,21 @@ const elementClass = computed(() => {
 });
 
 const typeLabel = computed(() => {
-  if (props.isPlaceholder) return "NEW";
+  if (props.isPlaceholder) return "";
   const labelMap: Record<ScreenplayElementType, string> = {
-    "scene-heading": "SCENE",
-    "scene-heading-sub": "SUB",
-    "scene-transition": "TRANS",
-    "dialog-character": "CHAR",
-    dialog: "DLG",
-    "dialog-parenthetical": "PAREN",
-    action: "ACTION",
+    "scene-heading": "#",
+    "scene-heading-sub": "##",
+    "scene-transition": ":",
+    "dialog-character": ">",
+    dialog: ">>",
+    "dialog-parenthetical": ">>",
+    action: "",
   };
-  return labelMap[props.element.type] ?? "?";
+  return labelMap[props.element.type] ?? "";
+});
+
+const shouldShowBadge = computed(() => {
+  return typeLabel.value !== "";
 });
 
 const typeColor = computed(() => {
@@ -329,6 +333,7 @@ function handleFocus() {
   >
     <!-- Type badge (subtle indicator, only visible on hover or focus) -->
     <v-chip
+      v-if="shouldShowBadge"
       :color="isPlaceholder ? 'grey-darken-1' : typeColor"
       size="x-small"
       variant="tonal"
@@ -371,8 +376,14 @@ function handleFocus() {
 
 .editor-element--placeholder {
   opacity: 0.35;
-  padding-top: 1px;
-  padding-bottom: 1px;
+}
+
+.editor-element--placeholder .editor-element__content,
+.editor-element__content.scene-heading,
+.editor-element__content.scene-transition,
+.editor-element__content.dialog-heading {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .editor-element--placeholder:hover,
@@ -391,8 +402,8 @@ function handleFocus() {
   margin-top: 4px;
   font-family: "Fira Code", monospace;
   font-size: 10px !important;
-  letter-spacing: 0.5px;
-  min-width: 52px;
+  letter-spacing: 0.2px;
+  min-width: 28px;
   justify-content: center;
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -444,5 +455,38 @@ function handleFocus() {
   margin-right: var(--sd-dialog-heading-padding, 10rem);
   text-transform: uppercase;
   font-weight: 800;
+}
+
+/* Responsive padding and margin adjustments for smaller/mobile screens */
+@media (max-width: 600px) {
+  .editor-element {
+    gap: 8px;
+    padding: 2px 4px;
+  }
+  
+  .editor-element__badge {
+    margin-top: 2px;
+  }
+
+  .editor-element__content {
+    font-size: 14px;
+    margin-top: 2px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .editor-element__content.dialog {
+    margin-left: 1.5rem;
+    margin-right: 1.5rem;
+  }
+
+  .editor-element__content.dialog-parenthetical {
+    margin-left: 2.2rem;
+    margin-right: 2.2rem;
+  }
+
+  .editor-element__content.dialog-heading {
+    margin-left: 2.8rem;
+    margin-right: 2.8rem;
+  }
 }
 </style>
