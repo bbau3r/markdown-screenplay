@@ -22,6 +22,131 @@ export const useEditorStore = defineStore("editor", () => {
 
   const inlineInputAfterElementId = ref<string | null>(null);
 
+  interface HistorySnapshot {
+    elements: ScreenplayElement[];
+    metadata: MetadataData;
+    selectedElementIds: string[];
+    caretOffset: number | null;
+  }
+
+  const undoStack = ref<HistorySnapshot[]>([]);
+  const redoStack = ref<HistorySnapshot[]>([]);
+  const caretOffset = ref<number | null>(null);
+  const isTyping = ref(false);
+  let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+  const MAX_HISTORY = 100;
+
+  function getCaretOffsetOfActiveElement(): number | null {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return null;
+    }
+    const activeEl = document.activeElement as HTMLElement;
+    if (activeEl && activeEl.classList.contains("editor-element__content")) {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        let offset = 0;
+        const node = range.startContainer;
+        const targetOffset = range.startOffset;
+
+        if (activeEl.contains(node) || activeEl === node) {
+          const walker = document.createTreeWalker(activeEl, NodeFilter.SHOW_TEXT, null);
+          while (walker.nextNode()) {
+            const currentNode = walker.currentNode;
+            if (currentNode === node) {
+              offset += targetOffset;
+              return offset;
+            }
+            offset += currentNode.textContent?.length || 0;
+          }
+
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            let childOffset = 0;
+            for (let i = 0; i < targetOffset && i < node.childNodes.length; i++) {
+              const child = node.childNodes[i];
+              if (activeEl.contains(child)) {
+                childOffset += child.textContent?.length || 0;
+              }
+            }
+            return childOffset;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  function recordState(isTextEdit = false, bundleSubsequentTyping = false) {
+    const currentElementsStr = JSON.stringify(elements.value);
+    const currentMetadataStr = JSON.stringify(metadata.value);
+
+    // Helper to check if the top snapshot in the stack is identical to current state
+    function isDuplicateSnapshot(): boolean {
+      if (undoStack.value.length === 0) return false;
+      const top = undoStack.value[undoStack.value.length - 1];
+      return JSON.stringify(top.elements) === currentElementsStr &&
+             JSON.stringify(top.metadata) === currentMetadataStr;
+    }
+
+    if (isTextEdit) {
+      if (!isTyping.value) {
+        if (!isDuplicateSnapshot()) {
+          if (undoStack.value.length >= MAX_HISTORY) {
+            undoStack.value.shift();
+          }
+          undoStack.value.push({
+            elements: JSON.parse(currentElementsStr),
+            metadata: JSON.parse(currentMetadataStr),
+            selectedElementIds: [...selectedElementIds.value],
+            caretOffset: getCaretOffsetOfActiveElement(),
+          });
+        }
+        isTyping.value = true;
+      }
+      redoStack.value = [];
+
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
+      typingTimeout = setTimeout(() => {
+        isTyping.value = false;
+        typingTimeout = null;
+      }, 1200);
+    } else {
+      if (isTyping.value) {
+        isTyping.value = false;
+        if (typingTimeout) {
+          clearTimeout(typingTimeout);
+          typingTimeout = null;
+        }
+      }
+      
+      if (!isDuplicateSnapshot()) {
+        if (undoStack.value.length >= MAX_HISTORY) {
+          undoStack.value.shift();
+        }
+        undoStack.value.push({
+          elements: JSON.parse(currentElementsStr),
+          metadata: JSON.parse(currentMetadataStr),
+          selectedElementIds: [...selectedElementIds.value],
+          caretOffset: getCaretOffsetOfActiveElement(),
+        });
+      }
+      redoStack.value = [];
+
+      if (bundleSubsequentTyping) {
+        isTyping.value = true;
+        if (typingTimeout) {
+          clearTimeout(typingTimeout);
+        }
+        typingTimeout = setTimeout(() => {
+          isTyping.value = false;
+          typingTimeout = null;
+        }, 1200);
+      }
+    }
+  }
+
   // ── Getters ────────────────────────────────────────────────────────
   const serializedMdsp = computed(() => {
     let startIdx = 0;
@@ -64,12 +189,21 @@ export const useEditorStore = defineStore("editor", () => {
     
     selectedElementIds.value = [];
     inlineInputAfterElementId.value = null;
+
+    undoStack.value = [];
+    redoStack.value = [];
+    isTyping.value = false;
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+      typingTimeout = null;
+    }
   }
 
   /**
    * Append a new element at the end, or at a specific index.
    */
   function addElement(type: ScreenplayElementType, text: string, atIndex?: number) {
+    recordState(false, true);
     const el = createElement(type, text);
     if (atIndex !== undefined && atIndex >= 0 && atIndex <= elements.value.length) {
       elements.value.splice(atIndex, 0, el);
@@ -84,7 +218,12 @@ export const useEditorStore = defineStore("editor", () => {
    */
   function updateElementText(id: string, text: string) {
     const el = elements.value.find((e) => e.id === id);
-    if (el) el.text = text;
+    if (el) {
+      if (el.text !== text) {
+        recordState(true);
+        el.text = text;
+      }
+    }
   }
 
   function updateElementType(id: string, type: ScreenplayElementType) {
@@ -92,6 +231,7 @@ export const useEditorStore = defineStore("editor", () => {
     if (el) {
       const oldType = el.type;
       if (oldType !== type) {
+        recordState(false, true);
         if (type === "dialog-parenthetical") {
           let txt = el.text;
           if (txt.startsWith("(") && txt.endsWith(")")) {
@@ -124,6 +264,7 @@ export const useEditorStore = defineStore("editor", () => {
   function removeElement(id: string) {
     const idx = elements.value.findIndex((e) => e.id === id);
     if (idx >= 0) {
+      recordState(false);
       elements.value.splice(idx, 1);
       selectedElementIds.value = selectedElementIds.value.filter((x) => x !== id);
     }
@@ -176,6 +317,7 @@ export const useEditorStore = defineStore("editor", () => {
   function deleteSelectedElements(): string | null {
     if (selectedElementIds.value.length === 0) return null;
 
+    recordState(false);
     const firstSelectedId = selectedElementIds.value[0];
     const firstIdx = elements.value.findIndex((e) => e.id === firstSelectedId);
 
@@ -186,7 +328,8 @@ export const useEditorStore = defineStore("editor", () => {
     selectedElementIds.value = [];
 
     if (elements.value.length === 0) {
-      const newEl = addElement("action", "");
+      const newEl = createElement("action", "");
+      elements.value.push(newEl);
       selectedElementIds.value = [newEl.id];
       return newEl.id;
     }
@@ -206,6 +349,7 @@ export const useEditorStore = defineStore("editor", () => {
   function splitElement(id: string, text1: string, text2: string): ScreenplayElement | null {
     const idx = elements.value.findIndex((e) => e.id === id);
     if (idx >= 0) {
+      recordState(false, true);
       const el = elements.value[idx];
       el.text = text1;
 
@@ -233,6 +377,7 @@ export const useEditorStore = defineStore("editor", () => {
   function mergeWithPrevious(id: string): { mergedId: string; cursorOffset: number } | null {
     const idx = elements.value.findIndex((e) => e.id === id);
     if (idx > 0) {
+      recordState(false, true);
       const prevEl = elements.value[idx - 1];
       const currentEl = elements.value[idx];
       const originalPrevTextLength = prevEl.text.length;
@@ -255,7 +400,12 @@ export const useEditorStore = defineStore("editor", () => {
   }
 
   function setMetadata(meta: MetadataData) {
-    metadata.value = meta;
+    const currentMetaStr = JSON.stringify(metadata.value);
+    const newMetaStr = JSON.stringify(meta);
+    if (currentMetaStr !== newMetaStr) {
+      recordState(false);
+      metadata.value = meta;
+    }
   }
 
   function ensurePlaceholders() {
@@ -276,11 +426,67 @@ export const useEditorStore = defineStore("editor", () => {
     }
   }
 
+  function undo() {
+    if (isTyping.value) {
+      isTyping.value = false;
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        typingTimeout = null;
+      }
+    }
+
+    if (undoStack.value.length === 0) return;
+
+    if (redoStack.value.length >= MAX_HISTORY) {
+      redoStack.value.shift();
+    }
+    redoStack.value.push({
+      elements: JSON.parse(JSON.stringify(elements.value)),
+      metadata: JSON.parse(JSON.stringify(metadata.value)),
+      selectedElementIds: [...selectedElementIds.value],
+      caretOffset: getCaretOffsetOfActiveElement(),
+    });
+
+    const prevSnapshot = undoStack.value.pop()!;
+    elements.value = prevSnapshot.elements;
+    metadata.value = prevSnapshot.metadata;
+    selectedElementIds.value = prevSnapshot.selectedElementIds;
+    caretOffset.value = prevSnapshot.caretOffset;
+  }
+
+  function redo() {
+    if (redoStack.value.length === 0) return;
+
+    if (undoStack.value.length >= MAX_HISTORY) {
+      undoStack.value.shift();
+    }
+    undoStack.value.push({
+      elements: JSON.parse(JSON.stringify(elements.value)),
+      metadata: JSON.parse(JSON.stringify(metadata.value)),
+      selectedElementIds: [...selectedElementIds.value],
+      caretOffset: getCaretOffsetOfActiveElement(),
+    });
+
+    const nextSnapshot = redoStack.value.pop()!;
+    elements.value = nextSnapshot.elements;
+    metadata.value = nextSnapshot.metadata;
+    selectedElementIds.value = nextSnapshot.selectedElementIds;
+    caretOffset.value = nextSnapshot.caretOffset;
+  }
+
   function $reset() {
     elements.value = [];
     selectedElementIds.value = [];
     inlineInputAfterElementId.value = null;
     metadata.value = { title: "", version: "", authors: [""] };
+    undoStack.value = [];
+    redoStack.value = [];
+    isTyping.value = false;
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+      typingTimeout = null;
+    }
+    caretOffset.value = null;
   }
 
   return {
@@ -289,6 +495,9 @@ export const useEditorStore = defineStore("editor", () => {
     selectedElementIds,
     metadata,
     inlineInputAfterElementId,
+    undoStack,
+    redoStack,
+    caretOffset,
     // getters
     serializedMdsp,
     selectedElementId,
@@ -307,6 +516,8 @@ export const useEditorStore = defineStore("editor", () => {
     showInlineInputAfter,
     setMetadata,
     ensurePlaceholders,
+    undo,
+    redo,
     $reset,
   };
 });

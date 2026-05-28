@@ -71,6 +71,13 @@ function focusElement(id: string, caretPosition: 'start' | 'end' | number = 'end
   });
 }
 
+function restoreHistoryFocus() {
+  const id = editorStore.selectedElementId;
+  if (id) {
+    focusElement(id, editorStore.caretOffset ?? "end");
+  }
+}
+
 // ── Click Canvas to Focus ──────────────────────────────────────────
 
 function handleCanvasClick(event: MouseEvent) {
@@ -140,6 +147,26 @@ function handleContainerKeydown(event: KeyboardEvent) {
     const nextFocusId = editorStore.deleteSelectedElements();
     if (nextFocusId) {
       focusElement(nextFocusId, "end");
+    }
+    return;
+  }
+
+  // Handle undo / redo keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y)
+  const isCtrlOrMeta = event.ctrlKey || event.metaKey;
+  if (isCtrlOrMeta) {
+    const key = event.key?.toLowerCase();
+    if (key === "z") {
+      event.preventDefault();
+      if (event.shiftKey) {
+        editorStore.redo();
+      } else {
+        editorStore.undo();
+      }
+      restoreHistoryFocus();
+    } else if (key === "y") {
+      event.preventDefault();
+      editorStore.redo();
+      restoreHistoryFocus();
     }
   }
 }

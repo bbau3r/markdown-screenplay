@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import type { ScreenplayElement, ScreenplayElementType } from "@transformers";
 
 const props = defineProps<{
@@ -29,12 +29,42 @@ const emit = defineEmits<{
 
 const editorRef = ref<HTMLDivElement | null>(null);
 
+let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
+let lastEmittedText = props.element.text;
+
+function flushDebounce() {
+  if (debounceTimeout) {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = null;
+    const text = editorRef.value?.innerText || "";
+    lastEmittedText = text;
+    emit("update:text", { id: props.element.id, text });
+  }
+}
+
+onBeforeUnmount(() => {
+  flushDebounce();
+});
+
 // Keep editor content in sync with store changes when not focused
 watch(
   () => props.element.text,
   (newText) => {
-    if (editorRef.value && document.activeElement !== editorRef.value) {
-      editorRef.value.innerText = newText;
+    if (editorRef.value) {
+      if (newText === lastEmittedText) return;
+      lastEmittedText = newText;
+
+      if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = null;
+      }
+      if (document.activeElement !== editorRef.value) {
+        editorRef.value.innerText = newText;
+      } else if (editorRef.value.innerText !== newText) {
+        const caret = getCaretOffset(editorRef.value);
+        editorRef.value.innerText = newText;
+        setCursorOffset(editorRef.value, Math.min(caret, newText.length));
+      }
     }
   },
 );
@@ -84,6 +114,7 @@ onMounted(() => {
   if (editorRef.value) {
     editorRef.value.innerText = props.element.text;
   }
+  lastEmittedText = props.element.text;
 });
 
 const elementClass = computed(() => {
@@ -171,6 +202,7 @@ function handleSelectTypeMenu(type: ScreenplayElementType) {
     emit("update:type", { id: props.element.id, type });
     const isParenthetical = type === "dialog-parenthetical";
     const initialText = isParenthetical ? "()" : " ";
+    lastEmittedText = initialText;
     emit("update:text", { id: props.element.id, text: initialText });
     emit("select", { id: props.element.id, isShift: false, isCtrl: false });
     nextTick(() => {
@@ -277,22 +309,45 @@ function handleInput(e: Event) {
   let typeChanged = false;
   // Smart dialogue typing auto-convert to parenthetical if typing opens with a parenthesis
   if (props.element.type === "dialog" && text.startsWith("(")) {
+    flushDebounce();
     emit("update:type", { id: props.element.id, type: "dialog-parenthetical" });
     typeChanged = true;
   } else if (
     props.element.type === "dialog-parenthetical" &&
     !text.startsWith("(")
   ) {
+    flushDebounce();
     emit("update:type", { id: props.element.id, type: "dialog" });
     typeChanged = true;
   }
 
   if (!typeChanged) {
-    emit("update:text", { id: props.element.id, text });
+    if (debounceTimeout) {
+      clearTimeout(debounceTimeout);
+    }
+    debounceTimeout = setTimeout(() => {
+      debounceTimeout = null;
+      lastEmittedText = text;
+      emit("update:text", { id: props.element.id, text });
+    }, 500);
   }
 }
 
 function handleKeydown(event: KeyboardEvent) {
+  // Flush debounce on actions that change focus, modify structure, or trigger history
+  const isCtrlOrMeta = event.ctrlKey || event.metaKey;
+  const key = event.key?.toLowerCase();
+  if (
+    event.key === "Enter" ||
+    event.key === "ArrowUp" ||
+    event.key === "ArrowDown" ||
+    event.key === "Backspace" ||
+    event.key === "Delete" ||
+    (isCtrlOrMeta && (key === "z" || key === "y"))
+  ) {
+    flushDebounce();
+  }
+
   // 1. Enter key: split element
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
@@ -333,6 +388,7 @@ function handleKeydown(event: KeyboardEvent) {
         emit("update:type", { id: props.element.id, type: newType });
 
         editorRef.value.innerText = remainingText;
+        lastEmittedText = remainingText;
         emit("update:text", { id: props.element.id, text: remainingText });
 
         nextTick(() => {
@@ -359,6 +415,7 @@ function handleKeydown(event: KeyboardEvent) {
           if (editorRef.value) {
             editorRef.value.innerText = "";
           }
+          lastEmittedText = "";
           emit("update:text", { id: props.element.id, text: "" });
           emit("merge-previous", props.element.id);
           return;
@@ -438,6 +495,10 @@ function handleFocus() {
     isShift: false,
     isCtrl: false,
   });
+}
+
+function handleBlur() {
+  flushDebounce();
 }
 </script>
 
@@ -538,6 +599,7 @@ function handleFocus() {
       @input="handleInput"
       @keydown="handleKeydown"
       @focus="handleFocus"
+      @blur="handleBlur"
       spellcheck="true"
     ></div>
   </div>

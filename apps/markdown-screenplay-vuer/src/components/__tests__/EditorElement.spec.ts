@@ -221,4 +221,107 @@ describe("EditorElement.vue Backspace Demotion", () => {
     const emittedText = wrapper.emitted("update:text");
     expect(emittedText).toBeFalsy();
   });
+
+  it("debounces text input and flushes on blur/keydown", async () => {
+    vi.useFakeTimers();
+    try {
+      const el: ScreenplayElement = {
+        id: "el-debounce",
+        type: "action",
+        text: "",
+      };
+      const wrapper = mountElement(el);
+      const contentDiv = wrapper.find(".editor-element__content");
+
+      // 1. Simulate user typing
+      (contentDiv.element as HTMLDivElement).innerText = "H";
+      await contentDiv.trigger("input");
+      (contentDiv.element as HTMLDivElement).innerText = "He";
+      await contentDiv.trigger("input");
+      (contentDiv.element as HTMLDivElement).innerText = "Hel";
+      await contentDiv.trigger("input");
+
+      // No emission yet because of debounce
+      expect(wrapper.emitted("update:text")).toBeFalsy();
+
+      // 2. Advance time by 500ms
+      vi.advanceTimersByTime(500);
+
+      // Now it should be emitted
+      let emittedText = wrapper.emitted("update:text");
+      expect(emittedText).toBeTruthy();
+      expect(emittedText).toHaveLength(1);
+      expect(emittedText![0][0]).toEqual({
+        id: "el-debounce",
+        text: "Hel",
+      });
+
+      // 3. Type again, then trigger blur
+      (contentDiv.element as HTMLDivElement).innerText = "Hell";
+      await contentDiv.trigger("input");
+      expect(wrapper.emitted("update:text")).toHaveLength(1); // Still has 1 event
+
+      await contentDiv.trigger("blur");
+
+      // Should flush immediately on blur
+      emittedText = wrapper.emitted("update:text");
+      expect(emittedText).toHaveLength(2);
+      expect(emittedText![1][0]).toEqual({
+        id: "el-debounce",
+        text: "Hell",
+      });
+
+      // 4. Type again, then trigger Keydown Enter
+      (contentDiv.element as HTMLDivElement).innerText = "Hello";
+      await contentDiv.trigger("input");
+      expect(wrapper.emitted("update:text")).toHaveLength(2); // Still has 2 events
+
+      await contentDiv.trigger("keydown", { key: "Enter" });
+
+      // Should flush immediately on Enter
+      emittedText = wrapper.emitted("update:text");
+      expect(emittedText).toHaveLength(3);
+      expect(emittedText![2][0]).toEqual({
+        id: "el-debounce",
+        text: "Hello",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("cancels debounce when prop element.text is updated from parent", async () => {
+    vi.useFakeTimers();
+    try {
+      const el: ScreenplayElement = {
+        id: "el-cancel",
+        type: "action",
+        text: "original",
+      };
+      const wrapper = mountElement(el);
+      const contentDiv = wrapper.find(".editor-element__content");
+
+      // Type some text
+      (contentDiv.element as HTMLDivElement).innerText = "original typed";
+      await contentDiv.trigger("input");
+      expect(wrapper.emitted("update:text")).toBeFalsy();
+
+      // Parent updates the prop (e.g. from undo)
+      await wrapper.setProps({
+        element: {
+          id: "el-cancel",
+          type: "action",
+          text: "undone-value",
+        },
+      });
+
+      // Advance time by 500ms
+      vi.advanceTimersByTime(500);
+
+      // The debounce should have been cancelled, so no update:text is emitted
+      expect(wrapper.emitted("update:text")).toBeFalsy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
