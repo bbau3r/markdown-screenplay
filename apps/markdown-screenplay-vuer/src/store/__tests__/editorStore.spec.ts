@@ -91,4 +91,44 @@ describe("editorStore", () => {
     // Serialized output should strip the empty top and bottom placeholders!
     expect(store.serializedMdsp).toBe("# INT. HOUSE - DAY\nLine 1");
   });
+
+  it("transitions element to/from dialog-parenthetical formatting the text correctly", () => {
+    setActivePinia(createPinia());
+    const store = useEditorStore();
+
+    store.loadFromRawContent("# INT. HOUSE - DAY\n> JOHN\n>> Hello");
+    expect(store.elements.length).toBe(3);
+    const dialogEl = store.elements[2];
+    expect(dialogEl.type).toBe("dialog");
+    expect(dialogEl.text).toBe("Hello");
+
+    // Transition to dialog-parenthetical
+    store.updateElementType(dialogEl.id, "dialog-parenthetical");
+    expect(dialogEl.type).toBe("dialog-parenthetical");
+    expect(dialogEl.text).toBe("(Hello)");
+
+    // Transition back to dialog
+    store.updateElementType(dialogEl.id, "dialog");
+    expect(dialogEl.type).toBe("dialog");
+    expect(dialogEl.text).toBe("Hello");
+
+    // Transition back with partial parentheses
+    dialogEl.text = "(Hello";
+    dialogEl.type = "dialog";
+    store.updateElementType(dialogEl.id, "dialog-parenthetical");
+    expect(dialogEl.text).toBe("(Hello)");
+
+    dialogEl.text = "Hello)";
+    dialogEl.type = "dialog";
+    store.updateElementType(dialogEl.id, "dialog-parenthetical");
+    expect(dialogEl.text).toBe("(Hello))");
+
+    // If already fully enclosed, do nothing
+    dialogEl.text = "(Hello)";
+    dialogEl.type = "dialog";
+    dialogEl.type = "dialog-parenthetical"; // wait, to test transition we must actually transition
+    dialogEl.type = "dialog";
+    store.updateElementType(dialogEl.id, "dialog-parenthetical");
+    expect(dialogEl.text).toBe("(Hello)");
+  });
 });

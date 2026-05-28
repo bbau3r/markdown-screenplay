@@ -169,4 +169,56 @@ describe("EditorElement.vue Backspace Demotion", () => {
     expect(mergeEmitted).toBeTruthy();
     expect(mergeEmitted![0][0]).toBe("el-empty-parenthetical");
   });
+
+  it("converts dialog to dialog-parenthetical when typing opens with '('", async () => {
+    const el: ScreenplayElement = {
+      id: "el-typing",
+      type: "dialog",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+
+    // Simulate user typing '('
+    (contentDiv.element as HTMLDivElement).innerText = "(";
+    await contentDiv.trigger("input");
+
+    // Assert update:type is emitted to dialog-parenthetical
+    const emittedType = wrapper.emitted("update:type");
+    expect(emittedType).toBeTruthy();
+    expect(emittedType![0][0]).toEqual({
+      id: "el-typing",
+      type: "dialog-parenthetical",
+    });
+
+    // Assert update:text is NOT emitted to prevent double updates / store overrides
+    const emittedText = wrapper.emitted("update:text");
+    expect(emittedText).toBeFalsy();
+  });
+
+  it("converts dialog-parenthetical to dialog when deleting '('", async () => {
+    const el: ScreenplayElement = {
+      id: "el-parenthetical",
+      type: "dialog-parenthetical",
+      text: "(beat)",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+
+    // Simulate user deleting the leading '('
+    (contentDiv.element as HTMLDivElement).innerText = "beat)";
+    await contentDiv.trigger("input");
+
+    // Assert update:type is emitted to dialog
+    const emittedType = wrapper.emitted("update:type");
+    expect(emittedType).toBeTruthy();
+    expect(emittedType![0][0]).toEqual({
+      id: "el-parenthetical",
+      type: "dialog",
+    });
+
+    // Assert update:text is NOT emitted
+    const emittedText = wrapper.emitted("update:text");
+    expect(emittedText).toBeFalsy();
+  });
 });

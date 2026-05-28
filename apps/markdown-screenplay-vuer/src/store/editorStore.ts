@@ -87,12 +87,35 @@ export const useEditorStore = defineStore("editor", () => {
     if (el) el.text = text;
   }
 
-  /**
-   * Update the type of an existing element.
-   */
   function updateElementType(id: string, type: ScreenplayElementType) {
     const el = elements.value.find((e) => e.id === id);
-    if (el) el.type = type;
+    if (el) {
+      const oldType = el.type;
+      if (oldType !== type) {
+        if (type === "dialog-parenthetical") {
+          let txt = el.text;
+          if (txt.startsWith("(") && txt.endsWith(")")) {
+            // Already enclosed, do nothing
+          } else {
+            if (!txt.startsWith("(")) {
+              txt = "(" + txt;
+            }
+            txt = txt + ")";
+          }
+          el.text = txt;
+        } else if (oldType === "dialog-parenthetical") {
+          let txt = el.text;
+          if (txt.startsWith("(")) {
+            txt = txt.slice(1);
+          }
+          if (txt.endsWith(")")) {
+            txt = txt.slice(0, -1);
+          }
+          el.text = txt;
+        }
+        el.type = type;
+      }
+    }
   }
 
   /**

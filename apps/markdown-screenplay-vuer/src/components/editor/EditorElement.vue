@@ -39,6 +39,47 @@ watch(
   },
 );
 
+watch(
+  () => props.element.type,
+  (newType, oldType) => {
+    if (editorRef.value) {
+      const isFocused = document.activeElement === editorRef.value;
+      const oldText = editorRef.value.innerText;
+      const newText = props.element.text;
+
+      if (isFocused) {
+        const oldOffset = getCaretOffset(editorRef.value);
+        const isInto = newType === "dialog-parenthetical" && oldType !== "dialog-parenthetical";
+        const isOut = oldType === "dialog-parenthetical" && newType !== "dialog-parenthetical";
+
+        let newOffset = oldOffset;
+        if (isInto) {
+          if (!oldText.startsWith("(")) {
+            newOffset += 1;
+          }
+        } else if (isOut) {
+          if (oldText.startsWith("(")) {
+            if (oldOffset > 0) {
+              newOffset -= 1;
+            }
+          }
+        }
+
+        editorRef.value.innerText = newText;
+        const clampedOffset = Math.max(0, Math.min(newOffset, newText.length));
+
+        nextTick(() => {
+          if (editorRef.value) {
+            setCursorOffset(editorRef.value, clampedOffset);
+          }
+        });
+      } else {
+        editorRef.value.innerText = newText;
+      }
+    }
+  },
+);
+
 onMounted(() => {
   if (editorRef.value) {
     editorRef.value.innerText = props.element.text;
@@ -128,7 +169,9 @@ function selectType(type: ScreenplayElementType) {
 function handleSelectTypeMenu(type: ScreenplayElementType) {
   if (props.isPlaceholder) {
     emit("update:type", { id: props.element.id, type });
-    emit("update:text", { id: props.element.id, text: " " });
+    const isParenthetical = type === "dialog-parenthetical";
+    const initialText = isParenthetical ? "()" : " ";
+    emit("update:text", { id: props.element.id, text: initialText });
     emit("select", { id: props.element.id, isShift: false, isCtrl: false });
     nextTick(() => {
       if (editorRef.value) {
@@ -230,17 +273,23 @@ function setCursorOffset(element: HTMLElement, offset: number) {
 function handleInput(e: Event) {
   const target = e.target as HTMLDivElement;
   const text = target.innerText;
+  
+  let typeChanged = false;
   // Smart dialogue typing auto-convert to parenthetical if typing opens with a parenthesis
   if (props.element.type === "dialog" && text.startsWith("(")) {
     emit("update:type", { id: props.element.id, type: "dialog-parenthetical" });
+    typeChanged = true;
   } else if (
     props.element.type === "dialog-parenthetical" &&
     !text.startsWith("(")
   ) {
     emit("update:type", { id: props.element.id, type: "dialog" });
+    typeChanged = true;
   }
 
-  emit("update:text", { id: props.element.id, text });
+  if (!typeChanged) {
+    emit("update:text", { id: props.element.id, text });
+  }
 }
 
 function handleKeydown(event: KeyboardEvent) {
