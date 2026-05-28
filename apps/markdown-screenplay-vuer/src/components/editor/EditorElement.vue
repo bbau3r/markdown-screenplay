@@ -229,8 +229,7 @@ function setCursorOffset(element: HTMLElement, offset: number) {
 
 function handleInput(e: Event) {
   const target = e.target as HTMLDivElement;
-  let text = target.innerText;
-  cons;
+  const text = target.innerText;
   // Smart dialogue typing auto-convert to parenthetical if typing opens with a parenthesis
   if (props.element.type === "dialog" && text.startsWith("(")) {
     emit("update:type", { id: props.element.id, type: "dialog-parenthetical" });
@@ -442,22 +441,16 @@ function handleFocus() {
           <!-- Divider & Remove Option (Only for non-placeholder elements) -->
           <template v-if="!isPlaceholder">
             <v-divider class="my-1" />
-            <v-list-item
-              @click="handleRemoveElement"
-              class="py-2"
-            >
+            <v-list-item @click="handleRemoveElement" class="py-2">
               <template v-slot:prepend>
-                <v-chip
-                  size="x-small"
-                  color="error"
-                  label
-                  class="mr-2"
-                >
+                <v-chip size="x-small" color="error" label class="mr-2">
                   <v-icon size="x-small">mdi-delete-outline</v-icon>
                 </v-chip>
               </template>
               <div class="d-flex flex-column">
-                <span class="font-weight-bold text-body-2 text-error">Remove</span>
+                <span class="font-weight-bold text-body-2 text-error"
+                  >Remove</span
+                >
                 <span
                   class="text-caption text-medium-emphasis mt-0.5"
                   style="
