@@ -8,7 +8,7 @@ import {
   type ScreenplayElement,
   type ScreenplayElementType,
 } from "@transformers";
-import type { MetadataData } from "@/interfaces/file-data";
+import type { MetadataData, CharacterFileData } from "@/interfaces/file-data";
 
 export const useEditorStore = defineStore("editor", () => {
   // ── State ──────────────────────────────────────────────────────────
@@ -19,12 +19,14 @@ export const useEditorStore = defineStore("editor", () => {
     version: "",
     authors: [""],
   });
+  const characters = ref<CharacterFileData[]>([]);
 
   const inlineInputAfterElementId = ref<string | null>(null);
 
   interface HistorySnapshot {
     elements: ScreenplayElement[];
     metadata: MetadataData;
+    characters: CharacterFileData[];
     selectedElementIds: string[];
     caretOffset: number | null;
   }
@@ -79,13 +81,15 @@ export const useEditorStore = defineStore("editor", () => {
   function recordState(isTextEdit = false, bundleSubsequentTyping = false) {
     const currentElementsStr = JSON.stringify(elements.value);
     const currentMetadataStr = JSON.stringify(metadata.value);
+    const currentCharactersStr = JSON.stringify(characters.value);
 
     // Helper to check if the top snapshot in the stack is identical to current state
     function isDuplicateSnapshot(): boolean {
       if (undoStack.value.length === 0) return false;
       const top = undoStack.value[undoStack.value.length - 1];
       return JSON.stringify(top.elements) === currentElementsStr &&
-             JSON.stringify(top.metadata) === currentMetadataStr;
+             JSON.stringify(top.metadata) === currentMetadataStr &&
+             JSON.stringify(top.characters) === currentCharactersStr;
     }
 
     if (isTextEdit) {
@@ -97,6 +101,7 @@ export const useEditorStore = defineStore("editor", () => {
           undoStack.value.push({
             elements: JSON.parse(currentElementsStr),
             metadata: JSON.parse(currentMetadataStr),
+            characters: JSON.parse(currentCharactersStr),
             selectedElementIds: [...selectedElementIds.value],
             caretOffset: getCaretOffsetOfActiveElement(),
           });
@@ -128,6 +133,7 @@ export const useEditorStore = defineStore("editor", () => {
         undoStack.value.push({
           elements: JSON.parse(currentElementsStr),
           metadata: JSON.parse(currentMetadataStr),
+          characters: JSON.parse(currentCharactersStr),
           selectedElementIds: [...selectedElementIds.value],
           caretOffset: getCaretOffsetOfActiveElement(),
         });
@@ -399,11 +405,11 @@ export const useEditorStore = defineStore("editor", () => {
     inlineInputAfterElementId.value = id;
   }
 
-  function setMetadata(meta: MetadataData) {
+  function setMetadata(meta: MetadataData, isTextEdit = false) {
     const currentMetaStr = JSON.stringify(metadata.value);
     const newMetaStr = JSON.stringify(meta);
     if (currentMetaStr !== newMetaStr) {
-      recordState(false);
+      recordState(isTextEdit);
       metadata.value = meta;
     }
   }
@@ -443,6 +449,7 @@ export const useEditorStore = defineStore("editor", () => {
     redoStack.value.push({
       elements: JSON.parse(JSON.stringify(elements.value)),
       metadata: JSON.parse(JSON.stringify(metadata.value)),
+      characters: JSON.parse(JSON.stringify(characters.value)),
       selectedElementIds: [...selectedElementIds.value],
       caretOffset: getCaretOffsetOfActiveElement(),
     });
@@ -450,6 +457,7 @@ export const useEditorStore = defineStore("editor", () => {
     const prevSnapshot = undoStack.value.pop()!;
     elements.value = prevSnapshot.elements;
     metadata.value = prevSnapshot.metadata;
+    characters.value = prevSnapshot.characters;
     selectedElementIds.value = prevSnapshot.selectedElementIds;
     caretOffset.value = prevSnapshot.caretOffset;
   }
@@ -463,6 +471,7 @@ export const useEditorStore = defineStore("editor", () => {
     undoStack.value.push({
       elements: JSON.parse(JSON.stringify(elements.value)),
       metadata: JSON.parse(JSON.stringify(metadata.value)),
+      characters: JSON.parse(JSON.stringify(characters.value)),
       selectedElementIds: [...selectedElementIds.value],
       caretOffset: getCaretOffsetOfActiveElement(),
     });
@@ -470,8 +479,23 @@ export const useEditorStore = defineStore("editor", () => {
     const nextSnapshot = redoStack.value.pop()!;
     elements.value = nextSnapshot.elements;
     metadata.value = nextSnapshot.metadata;
+    characters.value = nextSnapshot.characters;
     selectedElementIds.value = nextSnapshot.selectedElementIds;
     caretOffset.value = nextSnapshot.caretOffset;
+  }
+
+  function setCharacters(chars: CharacterFileData[], isTextEdit = false) {
+    const currentCharsStr = JSON.stringify(characters.value);
+    const newCharsStr = JSON.stringify(chars);
+    if (currentCharsStr !== newCharsStr) {
+      recordState(isTextEdit);
+      characters.value = chars;
+    }
+  }
+
+  function clearHistory() {
+    undoStack.value = [];
+    redoStack.value = [];
   }
 
   function $reset() {
@@ -479,6 +503,7 @@ export const useEditorStore = defineStore("editor", () => {
     selectedElementIds.value = [];
     inlineInputAfterElementId.value = null;
     metadata.value = { title: "", version: "", authors: [""] };
+    characters.value = [];
     undoStack.value = [];
     redoStack.value = [];
     isTyping.value = false;
@@ -494,6 +519,7 @@ export const useEditorStore = defineStore("editor", () => {
     elements,
     selectedElementIds,
     metadata,
+    characters,
     inlineInputAfterElementId,
     undoStack,
     redoStack,
@@ -515,6 +541,8 @@ export const useEditorStore = defineStore("editor", () => {
     mergeWithPrevious,
     showInlineInputAfter,
     setMetadata,
+    setCharacters,
+    clearHistory,
     ensurePlaceholders,
     undo,
     redo,

@@ -3,10 +3,11 @@ import { computed, watch, onMounted, inject } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 import MetaDataSection from "@/components/viewer/MetaDataSection.vue";
+import CharactersEditSection from "@/components/editor/CharactersEditSection.vue";
 import EditorContent from "@/components/editor/EditorContent.vue";
 import { useFileStore } from "@/store/fileStore";
 import { useEditorStore } from "@/store/editorStore";
-import type { MetadataData } from "@/interfaces/file-data";
+import type { MetadataData, CharacterFileData } from "@/interfaces/file-data";
 import { AppBarServiceKey, type AppBarService } from "@/services/app-bar-service";
 
 const fileStore = useFileStore();
@@ -46,6 +47,8 @@ function loadFileIntoEditor() {
   if (file.value) {
     editorStore.loadFromRawContent(file.value.rawContent);
     editorStore.setMetadata({ ...file.value.metadata });
+    editorStore.setCharacters(file.value.characters.map((c) => ({ ...c })));
+    editorStore.clearHistory();
   }
 }
 
@@ -68,9 +71,34 @@ watch(
   },
 );
 
+// Watch editor metadata and write back to fileStore to keep in sync (including during undo/redo)
+watch(
+  () => editorStore.metadata,
+  (newMeta) => {
+    if (file.value) {
+      fileStore.updateMetadata(fileId.value, { ...newMeta });
+    }
+  },
+  { deep: true }
+);
+
+// Watch editor characters and write back to fileStore to keep in sync (including during undo/redo)
+watch(
+  () => editorStore.characters,
+  (newChars) => {
+    if (file.value) {
+      fileStore.updateCharacters(fileId.value, newChars.map((c) => ({ ...c })));
+    }
+  },
+  { deep: true }
+);
+
 const handleMetadataUpdate = (metadata: MetadataData) => {
-  fileStore.updateMetadata(fileId.value, metadata);
-  editorStore.setMetadata(metadata);
+  editorStore.setMetadata(metadata, true);
+};
+
+const handleCharactersUpdate = (characters: CharacterFileData[]) => {
+  editorStore.setCharacters(characters, true);
 };
 </script>
 
@@ -80,7 +108,7 @@ const handleMetadataUpdate = (metadata: MetadataData) => {
       <v-col cols="12" lg="9" xl="8">
         <div class="d-flex flex-column editor-view__layout">
           <!-- Header -->
-          <div class="editor-view__header px-4 pt-4 mb-7 d-flex align-center ga-3">
+          <div class="editor-view__header px-4 pt-4 mb-4 d-flex align-center ga-3">
             <v-icon color="primary" size="28">mdi-file-edit-outline</v-icon>
             <v-text-field
               v-model="fileName"
@@ -92,17 +120,22 @@ const handleMetadataUpdate = (metadata: MetadataData) => {
             />
           </div>
 
-          <!-- Metadata section (collapsible) -->
+          <!-- Metadata and Characters section (collapsible) -->
           <div class="px-4">
             <MetaDataSection
               v-if="file"
               :file="file"
               @update:metadata="handleMetadataUpdate"
             />
+            <CharactersEditSection
+              v-if="file"
+              :file="file"
+              @update:characters="handleCharactersUpdate"
+            />
           </div>
 
           <!-- Editor body -->
-          <v-sheet class="editor-view__body ma-sm-3 ma-0" elevation="3" :rounded="smAndUp ? 'lg' : '0'">
+          <v-sheet class="editor-view__body mx-sm-3 mb-sm-3 ma-0" elevation="3" :rounded="smAndUp ? 'lg' : '0'">
             <EditorContent />
           </v-sheet>
         </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, onBeforeUnmount } from "vue";
 import type { FileData, MetadataData } from "@/interfaces/file-data";
 
 const props = defineProps<{
@@ -37,19 +37,40 @@ watch(
   { deep: true },
 );
 
-// Emit on changes — guarded against re-entry
+let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// Emit on changes — debounced to avoid duplicating history states on every keystroke
 function emitUpdate() {
-  emitting = true;
-  const authors = draftAuthors.value.map((a) => a.trim());
-  emit("update:metadata", {
-    title: draftTitle.value.trim(),
-    version: draftVersion.value.trim(),
-    authors: authors.length > 0 ? authors : [""],
-  });
-  nextTick(() => {
-    emitting = false;
-  });
+  if (debounceTimeout) {
+    clearTimeout(debounceTimeout);
+  }
+  debounceTimeout = setTimeout(() => {
+    debounceTimeout = null;
+    emitting = true;
+    const authors = draftAuthors.value.map((a) => a.trim());
+    emit("update:metadata", {
+      title: draftTitle.value.trim(),
+      version: draftVersion.value.trim(),
+      authors: authors.length > 0 ? authors : [""],
+    });
+    nextTick(() => {
+      emitting = false;
+    });
+  }, 500);
 }
+
+onBeforeUnmount(() => {
+  if (debounceTimeout) {
+    clearTimeout(debounceTimeout);
+    emitting = true;
+    const authors = draftAuthors.value.map((a) => a.trim());
+    emit("update:metadata", {
+      title: draftTitle.value.trim(),
+      version: draftVersion.value.trim(),
+      authors: authors.length > 0 ? authors : [""],
+    });
+  }
+});
 
 watch(draftTitle, emitUpdate);
 watch(draftVersion, emitUpdate);

@@ -1,4 +1,4 @@
-import type { FileData, MetadataData } from "@/interfaces/file-data";
+import type { CharacterFileData, FileData, MetadataData } from "@/interfaces/file-data";
 import { HTMLTransformTarget, MarkupTransformer } from "@transformers";
 import { defineStore } from "pinia";
 
@@ -8,9 +8,9 @@ export interface FilesState {
 }
 
 /**
- * Build the YAML frontmatter string from a MetadataData object.
+ * Build the YAML frontmatter string from a MetadataData object and characters list.
  */
-function buildYamlFrontmatter(meta: MetadataData): string {
+function buildYamlFrontmatter(meta: MetadataData, characters?: CharacterFileData[]): string {
   const lines: string[] = ["---"];
   if (meta.title) lines.push(`title: ${meta.title}`);
   if (meta.version) lines.push(`version: ${meta.version}`);
@@ -20,6 +20,15 @@ function buildYamlFrontmatter(meta: MetadataData): string {
   } else if (authors.length > 1) {
     lines.push("authors:");
     authors.forEach((a) => lines.push(`  - ${a}`));
+  }
+  if (characters && characters.length > 0) {
+    lines.push("characters:");
+    characters.forEach((char) => {
+      if (char.name.trim()) {
+        lines.push(`  ${char.name.trim()}:`);
+        lines.push(`    color: '${char.color}'`);
+      }
+    });
   }
   lines.push("---");
   return lines.join("\n");
@@ -48,11 +57,11 @@ function stripYamlFrontmatter(raw: string): string {
 }
 
 /**
- * Re-render the HTML content from raw source + metadata.
+ * Re-render the HTML content from raw source + metadata + characters.
  */
-function rebuildContent(rawContent: string, metadata: MetadataData): string {
+function rebuildContent(rawContent: string, metadata: MetadataData, characters?: CharacterFileData[]): string {
   const body = stripYamlFrontmatter(rawContent);
-  const newRaw = buildYamlFrontmatter(metadata) + "\n" + body;
+  const newRaw = buildYamlFrontmatter(metadata, characters) + "\n" + body;
 
   const target = new HTMLTransformTarget();
   const transformer = new MarkupTransformer<HTMLTransformTarget, string>(target);
@@ -93,11 +102,13 @@ export const useFileStore = defineStore('files', {
       };
 
       // Rebuild the HTML content with the updated metadata
-      const content = rebuildContent(file.rawContent, cleanedMetadata);
+      const content = rebuildContent(file.rawContent, cleanedMetadata, file.characters);
+      const rawContent = buildYamlFrontmatter(cleanedMetadata, file.characters) + "\n" + stripYamlFrontmatter(file.rawContent);
 
       this.files[index] = {
         ...file,
         metadata: cleanedMetadata,
+        rawContent,
         content,
       };
     },
@@ -107,8 +118,8 @@ export const useFileStore = defineStore('files', {
         return;
       }
 
-      const rawContent = buildYamlFrontmatter(file.metadata) + "\n" + bodyContent;
-      const content = rebuildContent(rawContent, file.metadata);
+      const rawContent = buildYamlFrontmatter(file.metadata, file.characters) + "\n" + bodyContent;
+      const content = rebuildContent(rawContent, file.metadata, file.characters);
 
       this.files[index] = {
         ...file,
@@ -121,6 +132,22 @@ export const useFileStore = defineStore('files', {
       if (file) {
         file.fileName = fileName;
       }
+    },
+    updateCharacters(index: number, characters: CharacterFileData[]) {
+      const file = this.files[index];
+      if (!file) {
+        return;
+      }
+
+      const content = rebuildContent(file.rawContent, file.metadata, characters);
+      const rawContent = buildYamlFrontmatter(file.metadata, characters) + "\n" + stripYamlFrontmatter(file.rawContent);
+
+      this.files[index] = {
+        ...file,
+        characters,
+        rawContent,
+        content,
+      };
     },
     setEditing(value: boolean) {
       this.isEditing = value;
