@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { watch, nextTick } from "vue";
+import { watch } from "vue";
 import { useEditorStore } from "@/store/editorStore";
 import EditorElement from "./EditorElement.vue";
 import EditorHistoryControls from "./EditorHistoryControls.vue";
 import type { ScreenplayElementType } from "@transformers";
+import { focusElement } from "./caret";
 
 const editorStore = useEditorStore();
 
@@ -17,60 +18,6 @@ watch(
 );
 
 // ── Focus/Caret Positioning Helper ──────────────────────────────
-
-function focusElement(id: string, caretPosition: 'start' | 'end' | number = 'end') {
-  nextTick(() => {
-    const el = document.querySelector(`[data-id="${id}"] .editor-element__content`) as HTMLElement;
-    if (el) {
-      el.focus();
-      
-      const range = document.createRange();
-      const selection = window.getSelection();
-      if (!selection) return;
-
-      let offset = 0;
-      if (caretPosition === "start") {
-        offset = 0;
-      } else if (caretPosition === "end") {
-        offset = el.innerText.length;
-      } else if (typeof caretPosition === "number") {
-        offset = caretPosition;
-      }
-
-      let currentOffset = 0;
-      let targetNode: Node | null = null;
-      let relativeOffset = 0;
-
-      function traverse(node: Node) {
-        if (node.nodeType === Node.TEXT_NODE) {
-          const len = node.textContent?.length || 0;
-          if (currentOffset + len >= offset) {
-            targetNode = node;
-            relativeOffset = offset - currentOffset;
-            return true;
-          }
-          currentOffset += len;
-        } else {
-          for (let i = 0; i < node.childNodes.length; i++) {
-            if (traverse(node.childNodes[i])) return true;
-          }
-        }
-        return false;
-      }
-
-      traverse(el);
-
-      if (targetNode) {
-        range.setStart(targetNode, relativeOffset);
-      } else {
-        range.selectNodeContents(el);
-      }
-      range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
-  });
-}
 
 function restoreHistoryFocus() {
   const id = editorStore.selectedElementId;

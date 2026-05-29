@@ -116,6 +116,12 @@ export const useFileStore = defineStore('files', {
         content,
       };
     },
+    updateFileName(index: number, fileName: string) {
+      const file = this.files[index];
+      if (file) {
+        file.fileName = fileName;
+      }
+    },
     setEditing(value: boolean) {
       this.isEditing = value;
     },

@@ -48,4 +48,14 @@ describe("fileStore", () => {
         expect(fileStore.getFile(0)?.content).toContain("<p>version: 2.0</p>");
         expect(fileStore.getFile(0)?.content).toContain("<p class=\"section\">Body content</p>");
     });
+
+    it("updates filename successfully", () => {
+        setActivePinia(createPinia());
+        const fileStore = useFileStore();
+
+        fileStore.pushFile(buildFile());
+        fileStore.updateFileName(0, "new-script.mdsp");
+
+        expect(fileStore.getFile(0)?.fileName).toBe("new-script.mdsp");
+    });
 });

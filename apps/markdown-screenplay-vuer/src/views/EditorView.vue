@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, onMounted } from "vue";
+import { computed, watch, onMounted, inject } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 import MetaDataSection from "@/components/viewer/MetaDataSection.vue";
@@ -7,15 +7,29 @@ import EditorContent from "@/components/editor/EditorContent.vue";
 import { useFileStore } from "@/store/fileStore";
 import { useEditorStore } from "@/store/editorStore";
 import type { MetadataData } from "@/interfaces/file-data";
+import { AppBarServiceKey, type AppBarService } from "@/services/app-bar-service";
 
 const fileStore = useFileStore();
 const editorStore = useEditorStore();
 const route = useRoute();
 const router = useRouter();
 const { smAndUp } = useDisplay();
+const appBarService = inject<AppBarService>(AppBarServiceKey);
 
 const fileId = computed(() => Number(route.params.id));
 const file = computed(() => fileStore.getFile(fileId.value));
+
+const fileName = computed({
+  get: () => file.value?.fileName ?? "",
+  set: (val) => {
+    if (file.value) {
+      fileStore.updateFileName(fileId.value, val);
+      if (appBarService) {
+        appBarService.textOverride = val;
+      }
+    }
+  }
+});
 
 // Redirect if file doesn't exist
 watch(
@@ -66,19 +80,16 @@ const handleMetadataUpdate = (metadata: MetadataData) => {
       <v-col cols="12" lg="9" xl="8">
         <div class="d-flex flex-column editor-view__layout">
           <!-- Header -->
-          <div class="editor-view__header px-4 pt-4">
-            <div class="d-flex align-center ga-3 mb-2">
-              <v-icon color="primary" size="28">mdi-pencil-box-outline</v-icon>
-              <h1 class="text-h5 font-weight-bold">Editor</h1>
-              <v-chip
-                v-if="editorStore.elements.length > 0"
-                size="small"
-                variant="tonal"
-                color="primary"
-              >
-                {{ editorStore.elements.length }} elements
-              </v-chip>
-            </div>
+          <div class="editor-view__header px-4 pt-4 mb-7 d-flex align-center ga-3">
+            <v-icon color="primary" size="28">mdi-file-edit-outline</v-icon>
+            <v-text-field
+              v-model="fileName"
+              variant="outlined"
+              density="compact"
+              hide-details
+              placeholder="File Name"
+              class="bg-surface rounded flex-grow-1"
+            />
           </div>
 
           <!-- Metadata section (collapsible) -->

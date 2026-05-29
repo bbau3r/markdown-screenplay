@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import type { ScreenplayElement, ScreenplayElementType } from "@transformers";
+import { getCaretOffset, setCursorOffset } from "./caret";
+import { useElementKeydown } from "./useElementKeydown";
 
 const props = defineProps<{
   element: ScreenplayElement;
@@ -136,49 +138,49 @@ const typeOptions = [
     label: "#",
     title: "Scene Heading",
     description: "Starts a new scene",
-    color: "blue",
+    color: "scene-heading",
   },
   {
     value: "scene-heading-sub" as ScreenplayElementType,
     label: "##",
     title: "Secondary Heading",
     description: "Sub-heading or continuation",
-    color: "blue-lighten-2",
+    color: "scene-heading-sub",
   },
   {
     value: "action" as ScreenplayElementType,
     label: "ACT",
     title: "Action",
     description: "Narrative description of action or character movements",
-    color: "grey",
+    color: "action",
   },
   {
     value: "dialog-character" as ScreenplayElementType,
     label: ">",
     title: "Character",
     description: "Name of the character speaking",
-    color: "purple",
+    color: "dialog-character",
   },
   {
     value: "dialog-parenthetical" as ScreenplayElementType,
     label: "()",
     title: "Parenthetical",
     description: "Indicates delivery, attitude, or action",
-    color: "teal-lighten-1",
+    color: "dialog-parenthetical",
   },
   {
     value: "dialog" as ScreenplayElementType,
     label: ">>",
     title: "Dialogue",
     description: "Lines of dialogue spoken by a character",
-    color: "teal",
+    color: "dialog",
   },
   {
     value: "scene-transition" as ScreenplayElementType,
     label: ":",
     title: "Transition",
     description: "Scene transitions on the right",
-    color: "orange",
+    color: "scene-transition",
   },
 ];
 
@@ -220,87 +222,7 @@ function handleRemoveElement() {
   emit("delete", props.element.id);
 }
 
-// Selection helpers for caret tracking
-function getCaretOffset(element: HTMLElement): number {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return 0;
-  const range = selection.getRangeAt(0);
 
-  let offset = 0;
-  const node = range.startContainer;
-  const targetOffset = range.startOffset;
-
-  if (!element.contains(node) && element !== node) {
-    return 0;
-  }
-
-  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
-
-  while (walker.nextNode()) {
-    const currentNode = walker.currentNode;
-    if (currentNode === node) {
-      offset += targetOffset;
-      return offset;
-    }
-    offset += currentNode.textContent?.length || 0;
-  }
-
-  if (node.nodeType === Node.ELEMENT_NODE) {
-    let childOffset = 0;
-    for (let i = 0; i < targetOffset && i < node.childNodes.length; i++) {
-      const child = node.childNodes[i];
-      if (element.contains(child)) {
-        childOffset += child.textContent?.length || 0;
-      }
-    }
-    return childOffset;
-  }
-
-  return offset;
-}
-
-function isCaretAtStart(): boolean {
-  if (!editorRef.value) return false;
-  return getCaretOffset(editorRef.value) === 0;
-}
-
-function setCursorOffset(element: HTMLElement, offset: number) {
-  const range = document.createRange();
-  const selection = window.getSelection();
-  if (!selection) return;
-
-  let currentOffset = 0;
-  let targetNode: Node | null = null;
-  let relativeOffset = 0;
-
-  function traverse(node: Node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      const len = node.textContent?.length || 0;
-      if (currentOffset + len >= offset) {
-        targetNode = node;
-        relativeOffset = offset - currentOffset;
-        return true;
-      }
-      currentOffset += len;
-    } else {
-      for (let i = 0; i < node.childNodes.length; i++) {
-        if (traverse(node.childNodes[i])) return true;
-      }
-    }
-    return false;
-  }
-
-  traverse(element);
-
-  if (targetNode) {
-    range.setStart(targetNode, relativeOffset);
-  } else {
-    range.selectNodeContents(element);
-  }
-  range.collapse(true);
-  selection.removeAllRanges();
-  selection.addRange(range);
-}
 
 function handleInput(e: Event) {
   const target = e.target as HTMLDivElement;
@@ -333,153 +255,17 @@ function handleInput(e: Event) {
   }
 }
 
-function handleKeydown(event: KeyboardEvent) {
-  // Flush debounce on actions that change focus, modify structure, or trigger history
-  const isCtrlOrMeta = event.ctrlKey || event.metaKey;
-  const key = event.key?.toLowerCase();
-  if (
-    event.key === "Enter" ||
-    event.key === "ArrowUp" ||
-    event.key === "ArrowDown" ||
-    event.key === "Backspace" ||
-    event.key === "Delete" ||
-    (isCtrlOrMeta && (key === "z" || key === "y"))
-  ) {
-    flushDebounce();
+const handleKeydown = useElementKeydown(
+  props.element,
+  editorRef,
+  flushDebounce,
+  emit,
+  {
+    onUpdateLastEmittedText: (text) => {
+      lastEmittedText = text;
+    },
   }
-
-  // 1. Enter key: split element
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    if (editorRef.value) {
-      const offset = getCaretOffset(editorRef.value);
-
-      const text = editorRef.value.innerText;
-      const text1 = text.slice(0, offset);
-      const text2 = text.slice(offset);
-
-      // Update DOM and store immediately to prevent text retention in current element
-      editorRef.value.innerText = text1;
-
-      emit("split", { id: props.element.id, text1, text2 });
-    }
-  }
-
-  // 2. Space key: check markdown prefix shortcuts
-  if (event.key === " ") {
-    if (editorRef.value) {
-      const offset = getCaretOffset(editorRef.value);
-      const text = editorRef.value.innerText;
-      const prefix = text.slice(0, offset);
-      const prefixes = ["##", "#", ">>", ">", ":"];
-
-      if (prefixes.includes(prefix)) {
-        event.preventDefault();
-        const typeMap: Record<string, ScreenplayElementType> = {
-          "##": "scene-heading-sub",
-          "#": "scene-heading",
-          ">>": "dialog",
-          ">": "dialog-character",
-          ":": "scene-transition",
-        };
-        const newType = typeMap[prefix];
-        const remainingText = text.slice(offset);
-
-        emit("update:type", { id: props.element.id, type: newType });
-
-        editorRef.value.innerText = remainingText;
-        lastEmittedText = remainingText;
-        emit("update:text", { id: props.element.id, text: remainingText });
-
-        nextTick(() => {
-          if (editorRef.value) {
-            setCursorOffset(editorRef.value, 0);
-          }
-        });
-        return;
-      }
-    }
-  }
-
-  // 3. Backspace/Delete key: remove type, delete, or merge with previous
-  if (event.key === "Backspace" || event.key === "Delete") {
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      if (!range.collapsed) {
-        const selectedTextLength = range.toString().length;
-        const elementTextLength = editorRef.value?.innerText.length || 0;
-        if (selectedTextLength === elementTextLength) {
-          // 1. Entire element is selected -> Delete element without merging text
-          event.preventDefault();
-          if (editorRef.value) {
-            editorRef.value.innerText = "";
-          }
-          lastEmittedText = "";
-          emit("update:text", { id: props.element.id, text: "" });
-          emit("merge-previous", props.element.id);
-          return;
-        } else if (event.key === "Backspace" && isCaretAtStart()) {
-          // 2. Part of the element is selected and Backspace pressed -> Delete selected text but don't merge
-          return;
-        }
-      } else if (event.key === "Backspace" && isCaretAtStart()) {
-        // 3. Only merge if no text is selected (caret is collapsed) on Backspace
-        if (props.element.text === "" || props.element.type === "action") {
-          event.preventDefault();
-          emit("merge-previous", props.element.id);
-        } else {
-          event.preventDefault();
-          const demotionMap: Record<
-            ScreenplayElementType,
-            ScreenplayElementType
-          > = {
-            "dialog-character": "action",
-            "dialog-parenthetical": "dialog",
-            dialog: "dialog-character",
-            "scene-heading-sub": "scene-heading",
-            "scene-heading": "action",
-            "scene-transition": "action",
-            action: "action",
-          };
-          const nextType = demotionMap[props.element.type] || "action";
-          emit("update:type", { id: props.element.id, type: nextType });
-          nextTick(() => {
-            if (editorRef.value) {
-              setCursorOffset(editorRef.value, 0);
-            }
-          });
-        }
-      }
-    }
-  }
-
-  // 4. Arrow keys: move focus between elements
-  if (event.key === "ArrowUp") {
-    if (isCaretAtStart()) {
-      event.preventDefault();
-      emit("navigate", {
-        id: props.element.id,
-        direction: "up",
-        isShift: event.shiftKey,
-      });
-    }
-  }
-  if (event.key === "ArrowDown") {
-    if (editorRef.value) {
-      const offset = getCaretOffset(editorRef.value);
-      const textLen = editorRef.value.innerText.length;
-      if (offset === textLen) {
-        event.preventDefault();
-        emit("navigate", {
-          id: props.element.id,
-          direction: "down",
-          isShift: event.shiftKey,
-        });
-      }
-    }
-  }
-}
+);
 
 function handleClick(event: MouseEvent) {
   emit("select", {
@@ -686,25 +472,25 @@ function handleBlur() {
 }
 
 .editor-element__tag-btn--scene-heading {
-  color: #2196f3;
+  color: rgb(var(--v-theme-scene-heading));
 }
 .editor-element__tag-btn--scene-heading-sub {
-  color: #64b5f6;
+  color: rgb(var(--v-theme-scene-heading-sub));
 }
 .editor-element__tag-btn--action {
-  color: #757575;
+  color: rgb(var(--v-theme-action));
 }
 .editor-element__tag-btn--dialog-character {
-  color: #9c27b0;
+  color: rgb(var(--v-theme-dialog-character));
 }
 .editor-element__tag-btn--dialog-parenthetical {
-  color: #4db6ac;
+  color: rgb(var(--v-theme-dialog-parenthetical));
 }
 .editor-element__tag-btn--dialog {
-  color: #009688;
+  color: rgb(var(--v-theme-dialog));
 }
 .editor-element__tag-btn--scene-transition {
-  color: #ff9800;
+  color: rgb(var(--v-theme-scene-transition));
 }
 
 .editor-element__tag-btn--new {
