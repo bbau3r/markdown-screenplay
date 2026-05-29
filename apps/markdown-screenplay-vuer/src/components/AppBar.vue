@@ -30,10 +30,20 @@ const isCurrentFileEditing = computed(() => {
   return file?.isEditing ?? false;
 });
 
-const navItems = computed(() => {
-  const items = [];
-  items.push({ text: "New File", icon: "mdi-plus-box-outline", action: "new" } as any);
-  items.push({ text: "Load File", icon: "mdi-folder-outline", route: "/" } as any);
+export interface NavItem {
+  text: string;
+  icon: string;
+  route?: string;
+  action?: "new";
+  isFile?: boolean;
+  fileIndex?: number;
+  isActive?: boolean;
+}
+
+const navItems = computed<NavItem[]>(() => {
+  const items: NavItem[] = [];
+  items.push({ text: "New File", icon: "mdi-plus-box-outline", action: "new" });
+  items.push({ text: "Load File", icon: "mdi-folder-outline", route: "/" });
 
   fileStore.files.forEach((file, index) => {
     const isActive = currentFileId.value === index;
@@ -43,11 +53,11 @@ const navItems = computed(() => {
       route: file.isEditing ? `/editor/${index}` : `/view/${index}`,
       isFile: true,
       fileIndex: index,
-      isActive
-    } as any);
+      isActive,
+    });
   });
 
-  items.push({ text: "Guide", icon: "mdi-progress-helper", route: "/guide" } as any);
+  items.push({ text: "Guide", icon: "mdi-progress-helper", route: "/guide" });
   return items;
 });
 
@@ -59,7 +69,7 @@ function createNewFile() {
 
 function closeFile(index: number) {
   fileStore.removeFile(index);
-  
+
   if (currentFileId.value === index) {
     if (fileStore.files.length > 0) {
       const nextFile = fileStore.getFile(0);
@@ -114,7 +124,9 @@ function saveDocument() {
     return;
   }
 
-  const blob = new Blob([file.rawContent], { type: "text/plain;charset=utf-8" });
+  const blob = new Blob([file.rawContent], {
+    type: "text/plain;charset=utf-8",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -220,7 +232,7 @@ onBeforeUnmount(() => {
                 size="x-small"
                 density="compact"
                 class="close-tab-btn"
-                @click.prevent.stop="closeFile(item.fileIndex)"
+                @click.prevent.stop="closeFile(item.fileIndex!)"
               />
             </template>
           </v-list-item>
@@ -284,7 +296,9 @@ onBeforeUnmount(() => {
 }
 .close-tab-btn {
   opacity: 0.35;
-  transition: opacity 0.2s ease, color 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease;
 }
 .v-list-item:hover .close-tab-btn {
   opacity: 0.8;

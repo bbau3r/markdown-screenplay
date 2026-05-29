@@ -8,7 +8,10 @@ import EditorContent from "@/components/editor/EditorContent.vue";
 import { useFileStore } from "@/store/fileStore";
 import { useEditorStore } from "@/store/editorStore";
 import type { MetadataData, CharacterFileData } from "@/interfaces/file-data";
-import { AppBarServiceKey, type AppBarService } from "@/services/app-bar-service";
+import {
+  AppBarServiceKey,
+  type AppBarService,
+} from "@/services/app-bar-service";
 
 const fileStore = useFileStore();
 const editorStore = useEditorStore();
@@ -29,7 +32,7 @@ const fileName = computed({
         appBarService.textOverride = val;
       }
     }
-  }
+  },
 });
 
 // Redirect if file doesn't exist
@@ -54,7 +57,9 @@ function loadFileIntoEditor() {
 
 function focusActiveTab() {
   nextTick(() => {
-    const activeTab = document.querySelector(".v-navigation-drawer .v-list-item--active");
+    const activeTab = document.querySelector(
+      ".v-navigation-drawer .v-list-item--active",
+    );
     if (activeTab) {
       (activeTab as HTMLElement).focus();
     }
@@ -90,7 +95,7 @@ watch(
       fileStore.updateMetadata(fileId.value, { ...newMeta });
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 // Watch editor characters and write back to fileStore to keep in sync (including during undo/redo)
@@ -98,10 +103,13 @@ watch(
   () => editorStore.characters,
   (newChars) => {
     if (file.value) {
-      fileStore.updateCharacters(fileId.value, newChars.map((c) => ({ ...c })));
+      fileStore.updateCharacters(
+        fileId.value,
+        newChars.map((c) => ({ ...c })),
+      );
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 const handleMetadataUpdate = (metadata: MetadataData) => {
@@ -119,7 +127,9 @@ const handleCharactersUpdate = (characters: CharacterFileData[]) => {
       <v-col cols="12" lg="11" xl="10">
         <div class="d-flex flex-column editor-view__layout">
           <!-- Header -->
-          <div class="editor-view__header px-4 pt-4 mb-4 d-flex align-center ga-3">
+          <div
+            class="editor-view__header px-4 pt-4 mb-4 d-flex align-center ga-3"
+          >
             <v-icon color="primary" size="28">mdi-file-edit-outline</v-icon>
             <v-text-field
               v-model="fileName"
@@ -212,6 +222,7 @@ const handleCharactersUpdate = (characters: CharacterFileData[]) => {
     overflow-x: hidden;
     scroll-behavior: smooth;
     padding-right: 4px;
+    padding-bottom: 1.5rem;
   }
 
   .editor-view__sidebar::-webkit-scrollbar {

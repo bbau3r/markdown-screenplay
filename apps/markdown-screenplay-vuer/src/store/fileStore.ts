@@ -25,7 +25,14 @@ function buildYamlFrontmatter(meta: MetadataData, characters?: CharacterFileData
     characters.forEach((char) => {
       if (char.name.trim()) {
         lines.push(`  ${char.name.trim()}:`);
-        lines.push(`    color: '${char.color}'`);
+        let color = char.color.trim();
+        while (
+          (color.startsWith("'") && color.endsWith("'")) ||
+          (color.startsWith('"') && color.endsWith('"'))
+        ) {
+          color = color.slice(1, -1).trim();
+        }
+        lines.push(`    color: '${color}'`);
       }
     });
   }

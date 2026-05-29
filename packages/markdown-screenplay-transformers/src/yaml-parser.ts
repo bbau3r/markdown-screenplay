@@ -69,9 +69,21 @@ export class YAMLParser {
       return { key: content, value: undefined, isListItem };
 
     const key = content.slice(0, separatorIndex).trim();
-    const value = content.slice(separatorIndex + 1).trim();
+    let value = content.slice(separatorIndex + 1).trim();
+    
+    if (value === "") {
+      value = undefined as any;
+    } else {
+      // Strip surrounding single or double quotes
+      if (
+        (value.startsWith("'") && value.endsWith("'")) ||
+        (value.startsWith('"') && value.endsWith('"'))
+      ) {
+        value = value.slice(1, -1);
+      }
+    }
 
-    return { key, value: value === "" ? undefined : value, isListItem };
+    return { key, value, isListItem };
   }
 
   private toObject(node: YAMLTreeNode): unknown {

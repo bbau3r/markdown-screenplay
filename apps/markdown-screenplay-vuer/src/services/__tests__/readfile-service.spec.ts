@@ -25,4 +25,28 @@ describe("ReadFileService", () => {
             authors: ["Alice", "Bob"],
         });
     });
+
+    it("extracts characters and strips quotes from their colors", () => {
+        const service = new ReadFileService();
+
+        const result = service.processContent(
+            [
+                "---",
+                "title: Test Title",
+                "characters:",
+                "  ALICE:",
+                "    color: '#ff0000'",
+                "  BOB:",
+                "    color: \"#00ff00\"",
+                "---",
+                "# INT. ROOM - NIGHT",
+            ].join("\n"),
+            "sample.mdsp",
+        );
+
+        expect(result.characters).toEqual([
+            { name: "ALICE", color: "#ff0000" },
+            { name: "BOB", color: "#00ff00" },
+        ]);
+    });
 });
