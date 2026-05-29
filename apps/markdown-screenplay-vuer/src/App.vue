@@ -19,8 +19,8 @@ onMounted(() => {
     const isFileRoute =
       to.path.startsWith("/view/") || to.path.startsWith("/editor/");
 
-    if (isFileRoute) {
-      fileStore.setEditing(to.path.startsWith("/editor/"));
+    if (isFileRoute && !isNaN(id)) {
+      fileStore.setEditing(id, to.path.startsWith("/editor/"));
     }
 
     if (isFileRoute && !isNaN(id)) {

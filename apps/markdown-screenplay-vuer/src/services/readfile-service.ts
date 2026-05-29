@@ -49,6 +49,7 @@ export class ReadFileService {
       characters,
       fileName,
       metadata: this.extractMetadata(results.yamlData),
+      isEditing: false,
     }
   }
 

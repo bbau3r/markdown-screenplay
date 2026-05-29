@@ -24,6 +24,12 @@ const isRail = ref(true); // collapsed by default
 const group = ref(null);
 watch(group, () => (drawer.value = false));
 
+const isCurrentFileEditing = computed(() => {
+  if (currentFileId.value < 0) return false;
+  const file = fileStore.getFile(currentFileId.value);
+  return file?.isEditing ?? false;
+});
+
 const navItems = computed(() => {
   const items = [];
   items.push({ text: "New File", icon: "mdi-plus-box-outline", action: "new" } as any);
@@ -33,8 +39,8 @@ const navItems = computed(() => {
     const isActive = currentFileId.value === index;
     items.push({
       text: file.fileName,
-      icon: fileStore.isEditing && isActive ? "mdi-pencil" : "mdi-file-document",
-      route: fileStore.isEditing ? `/editor/${index}` : `/view/${index}`,
+      icon: file.isEditing ? "mdi-pencil" : "mdi-file-document",
+      route: file.isEditing ? `/editor/${index}` : `/view/${index}`,
       isFile: true,
       fileIndex: index,
       isActive
@@ -56,14 +62,17 @@ function closeFile(index: number) {
   
   if (currentFileId.value === index) {
     if (fileStore.files.length > 0) {
-      const routeType = fileStore.isEditing ? "editor" : "view";
+      const nextFile = fileStore.getFile(0);
+      const routeType = nextFile?.isEditing ? "editor" : "view";
       router.push(`/${routeType}/0`);
     } else {
       router.push("/");
     }
   } else if (currentFileId.value > index) {
-    const routeType = fileStore.isEditing ? "editor" : "view";
-    router.push(`/${routeType}/${currentFileId.value - 1}`);
+    const nextIndex = currentFileId.value - 1;
+    const nextFile = fileStore.getFile(nextIndex);
+    const routeType = nextFile?.isEditing ? "editor" : "view";
+    router.push(`/${routeType}/${nextIndex}`);
   }
 }
 
@@ -84,14 +93,16 @@ function editorModeRoute() {
 }
 
 function handleToggleMode() {
-  fileStore.toggleEditing();
-
   if (currentFileId.value < 0) {
     return;
   }
 
+  fileStore.toggleEditing(currentFileId.value);
+  const file = fileStore.getFile(currentFileId.value);
+  const isEditing = file?.isEditing ?? false;
+
   router.push({
-    path: fileStore.isEditing ? editorModeRoute() : viewModeRoute(),
+    path: isEditing ? editorModeRoute() : viewModeRoute(),
   });
 }
 
@@ -227,8 +238,8 @@ onBeforeUnmount(() => {
         <v-list-item
           v-if="showFileActions"
           @click="handleToggleMode"
-          :prepend-icon="fileStore.isEditing ? 'mdi-eye' : 'mdi-pencil'"
-          :title="fileStore.isEditing ? 'View' : 'Edit'"
+          :prepend-icon="isCurrentFileEditing ? 'mdi-eye' : 'mdi-pencil'"
+          :title="isCurrentFileEditing ? 'View' : 'Edit'"
         ></v-list-item>
         <v-list-item
           v-if="showFileActions"

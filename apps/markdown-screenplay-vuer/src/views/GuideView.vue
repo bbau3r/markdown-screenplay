@@ -14,7 +14,7 @@ function loadSample() {
     "12_angry_men.mdsp",
   );
   fileStore.pushFile(file);
-  router.push({ path: "/view/0" });
+  router.push({ path: `/view/${fileStore.files.length - 1}` });
 }
 </script>
 <style scoped>

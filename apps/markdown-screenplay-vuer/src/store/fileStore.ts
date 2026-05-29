@@ -4,7 +4,6 @@ import { defineStore } from "pinia";
 
 export interface FilesState {
   files: FileData[];
-  isEditing: boolean;
 }
 
 /**
@@ -73,7 +72,6 @@ export const useFileStore = defineStore('files', {
   state: (): FilesState => {
     return {
       files: [],
-      isEditing: false,
     }
   },
   actions: {
@@ -85,7 +83,10 @@ export const useFileStore = defineStore('files', {
       if (this.files.length >= maxFiles) {
         this.files.shift();
       }
-      this.files.push(file);
+      this.files.push({
+        ...file,
+        isEditing: file.isEditing ?? false
+      });
     },
     createNewFile() {
       // Find a unique filename
@@ -110,7 +111,8 @@ export const useFileStore = defineStore('files', {
         scenes: [],
         characters: [],
         fileName: newName,
-        metadata: defaultMetadata
+        metadata: defaultMetadata,
+        isEditing: true
       };
 
       this.pushFile(newFile);
@@ -182,23 +184,28 @@ export const useFileStore = defineStore('files', {
         content,
       };
     },
-    setEditing(value: boolean) {
-      this.isEditing = value;
+    setEditing(index: number, value: boolean) {
+      const file = this.files[index];
+      if (file) {
+        file.isEditing = value;
+      }
     },
-    toggleEditing() {
-      this.isEditing = !this.isEditing;
+    toggleEditing(index: number) {
+      const file = this.files[index];
+      if (file) {
+        file.isEditing = !file.isEditing;
+      }
     },
     $reset() {
       this.files = [];
-      this.isEditing = false;
     }
   },
   getters: {
     total: (state) => state.files.length,
     filesLinks: (state) => state.files.map((f, i) => ({
       text: f.fileName,
-      icon: state.isEditing && i === 0 ? 'mdi-pencil' : 'mdi-file-document',
-      route: state.isEditing ? '/editor/' + i : '/view/' + i
+      icon: f.isEditing ? 'mdi-pencil' : 'mdi-file-document',
+      route: f.isEditing ? '/editor/' + i : '/view/' + i
     })) ?? []
   }
 })

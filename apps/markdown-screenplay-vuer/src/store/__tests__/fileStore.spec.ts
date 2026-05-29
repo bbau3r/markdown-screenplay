@@ -22,6 +22,7 @@ const buildFile = (): FileData => ({
         version: "1.0",
         authors: ["Old Author"],
     },
+    isEditing: false,
 });
 
 describe("fileStore", () => {

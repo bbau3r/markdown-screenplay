@@ -13,6 +13,7 @@ export interface FileData {
   characters: CharacterFileData[];
   fileName: string;
   metadata: MetadataData;
+  isEditing: boolean;
 }
 
 export interface CharacterFileData {
