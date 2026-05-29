@@ -7,8 +7,8 @@ export class HTMLTransformTarget implements TransformTarget<string> {
   private static readonly italicPattern = /\*(.*?)\*/g;
   private static readonly underlinePattern = /_(.*?)_/g;
   private static readonly strikePattern = /~(.*?)~/g;
-  private static readonly characterRefPattern = /&\((.+?)\)/g;
-  private static readonly characterRefSinglePattern = /&(\w+)/g;
+  private static readonly characterRefPattern = /@\((.+?)\)/g;
+  private static readonly characterRefSinglePattern = /@(\w+)/g;
   private static readonly characterRefAliasPattern = /\[(.+?)\]\((.+?)\)/g;
 
   private _sceneCount = 1;
@@ -24,14 +24,17 @@ export class HTMLTransformTarget implements TransformTarget<string> {
    * @param config Optional settings:
    *  - `sceneAnchorFormat`: A format string used to generate anchor IDs (e.g. "scene_{0}").
    *    Default is "scene_{0}", which becomes "scene_1", "scene_2", etc.
+   *  - `sceneStart`: The starting number for scene anchors. Default is 1".
    */
-  constructor(config: { sceneAnchorFormat?: string } = {}) {
+  constructor(config: { sceneAnchorFormat?: string, sceneStart?: number } = {}) {
     this._sceneAnchorFormat = config.sceneAnchorFormat ?? "scene_{0}";
+    this._sceneCount = config.sceneStart ?? 1;
   }
 
   ProcessSceneHeading(line: string, handleNewScene: boolean): void {
     this.closeActiveSection();
-    this._output += `<div id="${this.formatString(this._sceneAnchorFormat, this._headingCount + "")}" class="scene-heading"${handleNewScene ? ` data-scene-count="${this._sceneCount}"` : ""}>${this.identifyCharacter(line.slice(1).toUpperCase())}</div>\n`;
+    const atRun = HTMLTransformTarget.leadingCharRunLength(line);
+    this._output += `<div id="${this.formatString(this._sceneAnchorFormat, this._headingCount + "")}" class="scene-heading"${handleNewScene ? ` data-scene-count="${this._sceneCount}"` : ""}>${this.identifyCharacter(line.slice(atRun).toUpperCase().trim())}</div>\n`;
     this._headingCount++;
     if (handleNewScene)
       this._sceneCount++;
@@ -91,6 +94,7 @@ export class HTMLTransformTarget implements TransformTarget<string> {
   }
 
   formatLine(line: string): string {
+    if (line[0] === "/") line = line.slice(1);
     return this.identifyCharacter(line)
       .replace(HTMLTransformTarget.subscriptPattern, "<sub>$1</sub>")
       .replace(HTMLTransformTarget.superscriptPattern, "<sup>$1</sup>")
@@ -159,4 +163,12 @@ export class HTMLTransformTarget implements TransformTarget<string> {
 
     return render;
   }
+
+  private static leadingCharRunLength(line: string): number {
+    if (line.length === 0) return 0;
+    const char = line[0];
+    const match = new RegExp(`^${char}+`).exec(line);
+    return match ? match[0].length : 0;
+  }
+
 }

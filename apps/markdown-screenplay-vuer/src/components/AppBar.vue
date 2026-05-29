@@ -2,13 +2,17 @@
 import { AppBarService, AppBarServiceKey } from "@/services/app-bar-service";
 import { useFileStore } from "@/store/fileStore";
 import { ref, watch, computed, onMounted, onBeforeUnmount, inject } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 
 const fileStore = useFileStore();
 const route = useRoute();
+const router = useRouter();
 
-const showFileActions = computed(() => route.path.startsWith("/view"));
+const showFileActions = computed(
+  () => route.path.startsWith("/view/") || route.path.startsWith("/editor/"),
+);
+const currentFileId = computed(() => Number(route.params.id ?? -1));
 
 const appBarService = inject<AppBarService>(AppBarServiceKey);
 
@@ -20,11 +24,57 @@ const isRail = ref(true); // collapsed by default
 const group = ref(null);
 watch(group, () => (drawer.value = false));
 
-const navItems = computed(() => [
-  { text: "Load File", icon: "mdi-folder-outline", route: "/" },
-  ...fileStore.filesLinks,
-  { text: "Guide", icon: "mdi-progress-helper", route: "/guide" },
-]);
+const isCurrentFileEditing = computed(() => {
+  if (currentFileId.value < 0) return false;
+  const file = fileStore.getFile(currentFileId.value);
+  return file?.isEditing ?? false;
+});
+
+const navItems = computed(() => {
+  const items = [];
+  items.push({ text: "New File", icon: "mdi-plus-box-outline", action: "new" } as any);
+  items.push({ text: "Load File", icon: "mdi-folder-outline", route: "/" } as any);
+
+  fileStore.files.forEach((file, index) => {
+    const isActive = currentFileId.value === index;
+    items.push({
+      text: file.fileName,
+      icon: file.isEditing ? "mdi-pencil" : "mdi-file-document",
+      route: file.isEditing ? `/editor/${index}` : `/view/${index}`,
+      isFile: true,
+      fileIndex: index,
+      isActive
+    } as any);
+  });
+
+  items.push({ text: "Guide", icon: "mdi-progress-helper", route: "/guide" } as any);
+  return items;
+});
+
+function createNewFile() {
+  fileStore.createNewFile();
+  const newIndex = fileStore.files.length - 1;
+  router.push(`/editor/${newIndex}`);
+}
+
+function closeFile(index: number) {
+  fileStore.removeFile(index);
+  
+  if (currentFileId.value === index) {
+    if (fileStore.files.length > 0) {
+      const nextFile = fileStore.getFile(0);
+      const routeType = nextFile?.isEditing ? "editor" : "view";
+      router.push(`/${routeType}/0`);
+    } else {
+      router.push("/");
+    }
+  } else if (currentFileId.value > index) {
+    const nextIndex = currentFileId.value - 1;
+    const nextFile = fileStore.getFile(nextIndex);
+    const routeType = nextFile?.isEditing ? "editor" : "view";
+    router.push(`/${routeType}/${nextIndex}`);
+  }
+}
 
 const { smAndUp } = useDisplay();
 
@@ -34,9 +84,56 @@ const showRail = computed(() => smAndUp.value && isRail.value);
 const showFab = ref(true);
 let lastScrollY = 0;
 
+function viewModeRoute() {
+  return `/view/${currentFileId.value}`;
+}
+
+function editorModeRoute() {
+  return `/editor/${currentFileId.value}`;
+}
+
+function handleToggleMode() {
+  if (currentFileId.value < 0) {
+    return;
+  }
+
+  fileStore.toggleEditing(currentFileId.value);
+  const file = fileStore.getFile(currentFileId.value);
+  const isEditing = file?.isEditing ?? false;
+
+  router.push({
+    path: isEditing ? editorModeRoute() : viewModeRoute(),
+  });
+}
+
+function saveDocument() {
+  const id = currentFileId.value;
+  const file = fileStore.getFile(id);
+
+  if (!file) {
+    return;
+  }
+
+  const blob = new Blob([file.rawContent], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = file.fileName || "screenplay.mdsp";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 async function printDocument() {
   try {
-    const id = Number(route.params.id ?? 0);
+    const id = currentFileId.value;
+    const file = fileStore.getFile(id);
+
+    if (!file) {
+      return;
+    }
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       throw new Error("Failed to open print window");
@@ -44,17 +141,15 @@ async function printDocument() {
 
     const doc = printWindow.document;
 
-    // Load the CSS file content
     const cssText = await import("@/assets/screenplay.css?raw");
 
-    // Create and inject <style> tag
     const style = doc.createElement("style");
     style.textContent = cssText.default;
     doc.head.appendChild(style);
 
     const spContainer = doc.createElement("div");
     spContainer.classList.add("sp-container");
-    spContainer.innerHTML = fileStore.getFile(id).content;
+    spContainer.innerHTML = file.content;
     doc.body.appendChild(spContainer);
     setTimeout(() => printWindow.print(), 1);
   } catch (error) {
@@ -112,15 +207,46 @@ onBeforeUnmount(() => {
         <template v-for="(item, index) in navItems" :key="index">
           <v-divider v-if="index == navItems.length - 1" />
           <v-list-item
+            v-if="item.route"
             :to="item.route"
             link
             :prepend-icon="item.icon"
             :title="item.text"
           >
+            <template #append v-if="item.isFile">
+              <v-btn
+                icon="mdi-close"
+                variant="text"
+                size="x-small"
+                density="compact"
+                class="close-tab-btn"
+                @click.prevent.stop="closeFile(item.fileIndex)"
+              />
+            </template>
+          </v-list-item>
+          <v-list-item
+            v-else-if="item.action === 'new'"
+            link
+            :prepend-icon="item.icon"
+            :title="item.text"
+            @click="createNewFile"
+          >
           </v-list-item>
         </template>
       </v-list>
       <v-list>
+        <v-list-item
+          v-if="showFileActions"
+          @click="handleToggleMode"
+          :prepend-icon="isCurrentFileEditing ? 'mdi-eye' : 'mdi-pencil'"
+          :title="isCurrentFileEditing ? 'View' : 'Edit'"
+        ></v-list-item>
+        <v-list-item
+          v-if="showFileActions"
+          @click="saveDocument"
+          prepend-icon="mdi-download"
+          title="Save"
+        ></v-list-item>
         <v-list-item
           v-if="showFileActions"
           @click="printDocument"
@@ -155,5 +281,16 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.5rem;
   user-select: none;
+}
+.close-tab-btn {
+  opacity: 0.35;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+.v-list-item:hover .close-tab-btn {
+  opacity: 0.8;
+}
+.close-tab-btn:hover {
+  opacity: 1 !important;
+  color: rgb(var(--v-theme-error)) !important;
 }
 </style>

@@ -18,7 +18,7 @@ const router = useRouter();
 function handleReadFileComplete(event: FileData) {
   fileStore.pushFile(event);
   router.push({
-    path: `/view/0`,
+    path: `/view/${fileStore.files.length - 1}`,
   });
 }
 

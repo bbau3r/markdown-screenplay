@@ -18,6 +18,6 @@ Each character entry can include a `color` value for UI highlighting or visual c
 
 ## Supported forms
 
-- `&Name` for direct character references
-- `&(Name With Spaces)` for names containing spaces
+- `@Name` for direct character references
+- `@(Name With Spaces)` for names containing spaces
 - `[Alias](Reference)` for display aliases linked to a canonical name

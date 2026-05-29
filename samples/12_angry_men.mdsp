@@ -39,19 +39,19 @@ characters:
 
 : FADE IN
 
-@ EXT. LONG SHOT - N. Y. - COURT OF GENERAL SESSIONS - DAY
+# EXT. LONG SHOT - N. Y. - COURT OF GENERAL SESSIONS - DAY
 
 A large, imposing building, gray, impressive as a background for the comings and goings of a number of ordinary people on an ordinary day. Camera holds on steps and building front from a distance and then dollies in slowly.
 
 : DISSOLVE TO
 
-@@ INT. LONG SHOT - THE LOBBY - DAY
+## INT. LONG SHOT - THE LOBBY - DAY
 
 Seething with activity, people of all kinds walking swiftly, purposefully to and from elevators, news stands, etc., others standing, waiting. Guards stationed at various posts. Camera pans across lobby, and then dollies into a bank of elevators. A number of people crowd into one. The door closes.
 
 : DISSOLVE TO
 
-@@ INT. LONG SHOT - A LONG CORRIDOR UPSTAIRS - DAY
+## INT. LONG SHOT - A LONG CORRIDOR UPSTAIRS - DAY
 
 The elevators on left. Many doorways to various courtrooms on right. Each door marked with a hanging sign. The first sign reads "Court of General Sessions. Part I". The second sign reads "Court of General Sessions. Part II" etc. An elevator door opens and a number of people exit and walk down the corridor. Other people, men and women, stand in the corridor talking.
 
@@ -63,54 +63,54 @@ Through the glass window of the door we can see, far in the background, the judg
 
 : DISSOLVE TO
 
-@@ INT. CLOSE UP - AN EMPTY WATER GLASS ON A TRAY - DAY
+## INT. CLOSE UP - AN EMPTY WATER GLASS ON A TRAY - DAY
 
 From the noise of the corridor we are now in the deathlike stillness of a courtroom. A hand places a freshly-filled pitcher of water on the tray. A pair of hands fills a glass from the pitcher. Camera pans with glass as it is raised. Camera holds on close-up of Judge, drinking the water. He finishes, puts the glass down, and turns to his left again. He clears his throat. Then he begins to speak.
 
-> &JUDGE
+> @JUDGE
 >> (Gravely)
 >> Pardon me, gentlemen. To continue, you’ve heard a long and complex case. Murder in the first degree ... premeditated homicide ... is the most serious charge tried in our criminal courts.
 
-@ INT. MEDIUM SHOT - THE JURY - DAY
+# INT. MEDIUM SHOT - THE JURY - DAY
 
 From the judge's angle. Seated in the jury box, listening intently to the judge. We see the 14 members of the jury. This includes the two alternates who sit on the far right side of the jury, one behind the other. The jury sits in numerical order reading from left to right: the Foreman through #6 in the front row, #7-#12 in the rear row. As the judge speaks, camera dollies slowly in, still holding on jury but excluding the alternates.
 
-> &JUDGE
+> @JUDGE
 >> You've listened to the testimony, and you’ve had the law read to you and interpreted as it applies to this case. It now becomes your duty to sit down to try and separate the facts from the fancy. One man is dead. The life of another is at stake. I urge you to deliberate honestly and thoughtfully.
 
 Camera is now in close on #'s [1](Juror #1), [2](Juror #2), [7](Juror #7) and [8](Juror #8). It begins to pan slowly right. [#7](Juror #7) fidgets endlessly. [#10](Juror #10) sniffs as if he has a cold. [#3](Juror #3) looks coldly off in the direction in which the defendant sits. All other jurymen watch the judge, listening intently. As the judge finishes his lines, camera is on #'s [5](Juror #5), [6](Juror #6), [11](Juror #11) and [12](Juror #12).
 
-> &JUDGE
+> @JUDGE
 >> If there is a reasonable doubt in your minds as to the guilt of the accused ...a reasonable doubt... then you must bring me a verdict of not guilty. If, however, there is no reasonable doubt, then you must, in good conscience find the accused guilty. However you decide, your verdict must be unanimous. In the event you find the accused guilty the bench will not entertain a recommendation for mercy. The death sentence is mandatory in this case.
 
 The judge pauses for a moment. There is a stillness in the room.
 
-@@ INT. CLOSE UP JUDGE - ENTIRE JURY IN BACKGROUND - DAY
+## INT. CLOSE UP JUDGE - ENTIRE JURY IN BACKGROUND - DAY
 
 The judge's profile fills the left side of the frame. In right background, we see the jury box.
 
-> &JUDGE
+> @JUDGE
 >> I don’t envy you your job. You are faced with a grave responsibility. Thank you, gentlemen.
 
 There is a pause. The judge turns away from the jury and nods in another direction.
 
-@@ INT. CLOSE UP THE FACE OF THE COURT CLERK - DAY
+## INT. CLOSE UP THE FACE OF THE COURT CLERK - DAY
 
-> &CLERK
+> @CLERK
 >> The alternate jurors are excused.
 
-@@ INT. MEDIUM SHOT - THE JURY - DAY
+## INT. MEDIUM SHOT - THE JURY - DAY
 
 All of their heads turn to camera right. Self-consciously the two alternates rise and move awkwardly out of the jury box. When they are gone, we hear the clerk.
 
-> &CLERK
+> @CLERK
 >> The Jury will retire.
 
 The members of the Jury look hesitantly at each other, each reluctant to be the first to stand. Finally [#3](Juror #3) stands up. Then the others begin to rise and file slowly off left until the Jury box is empty. They file through a long corridor, then through one door, then another. They are silent, serious. All we hear is the sound of their footsteps. Credits are superimposed over this scene.
 
 : DISSOLVE TO
 
-@ INT. MEDIUM SHOT - THE JURY ROOM - DAY
+# INT. MEDIUM SHOT - THE JURY ROOM - DAY
 
 The room is empty, silent save for the sounds of traffic twelve floors below. In center of room is a large scarred table and twelve chairs. There are four other chairs against the wall opposite the windows. Along one wall are three windows through which we can see the New York skyline. On the opposite wall is an electric clock and an electric fan.
 
@@ -138,11 +138,11 @@ There is no conversation for a moment. [#7](Juror #7) reaches the window. Camera
 
 He reaches over and opens the window wider.
 
-@ INT. MEDIUM SHOT - CENTERED ON GUARD - DAY
+# INT. MEDIUM SHOT - CENTERED ON GUARD - DAY
 
 He has finished counting them.
 
-> &GUARD
+> @GUARD
 >> Okay, gentlemen. Everybody's here. If there's anything you want I’m right outside. Just knock.
 
 He exits, closing the door as camera dollies back to include [#5](Juror #5), the youngest Juryman, who watches the door. We hear the lock click. [#5](Juror #5) half grins, self-consciously.
@@ -161,7 +161,7 @@ He exits, closing the door as camera dollies back to include [#5](Juror #5), the
 > [#10](Juror #10)
 >> Hey, what's that for?
 
-> &FOREMAN
+> @FOREMAN
 >> Well, I figured we might want to vote by ballots.
 
 > [#10](Juror #10)
