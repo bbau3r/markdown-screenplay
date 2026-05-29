@@ -24,11 +24,48 @@ const isRail = ref(true); // collapsed by default
 const group = ref(null);
 watch(group, () => (drawer.value = false));
 
-const navItems = computed(() => [
-  { text: "Load File", icon: "mdi-folder-outline", route: "/" },
-  ...fileStore.filesLinks,
-  { text: "Guide", icon: "mdi-progress-helper", route: "/guide" },
-]);
+const navItems = computed(() => {
+  const items = [];
+  items.push({ text: "New File", icon: "mdi-plus-box-outline", action: "new" } as any);
+  items.push({ text: "Load File", icon: "mdi-folder-outline", route: "/" } as any);
+
+  fileStore.files.forEach((file, index) => {
+    const isActive = currentFileId.value === index;
+    items.push({
+      text: file.fileName,
+      icon: fileStore.isEditing && isActive ? "mdi-pencil" : "mdi-file-document",
+      route: fileStore.isEditing ? `/editor/${index}` : `/view/${index}`,
+      isFile: true,
+      fileIndex: index,
+      isActive
+    } as any);
+  });
+
+  items.push({ text: "Guide", icon: "mdi-progress-helper", route: "/guide" } as any);
+  return items;
+});
+
+function createNewFile() {
+  fileStore.createNewFile();
+  const newIndex = fileStore.files.length - 1;
+  router.push(`/editor/${newIndex}`);
+}
+
+function closeFile(index: number) {
+  fileStore.removeFile(index);
+  
+  if (currentFileId.value === index) {
+    if (fileStore.files.length > 0) {
+      const routeType = fileStore.isEditing ? "editor" : "view";
+      router.push(`/${routeType}/0`);
+    } else {
+      router.push("/");
+    }
+  } else if (currentFileId.value > index) {
+    const routeType = fileStore.isEditing ? "editor" : "view";
+    router.push(`/${routeType}/${currentFileId.value - 1}`);
+  }
+}
 
 const { smAndUp } = useDisplay();
 
@@ -159,10 +196,29 @@ onBeforeUnmount(() => {
         <template v-for="(item, index) in navItems" :key="index">
           <v-divider v-if="index == navItems.length - 1" />
           <v-list-item
+            v-if="item.route"
             :to="item.route"
             link
             :prepend-icon="item.icon"
             :title="item.text"
+          >
+            <template #append v-if="item.isFile">
+              <v-btn
+                icon="mdi-close"
+                variant="text"
+                size="x-small"
+                density="compact"
+                class="close-tab-btn"
+                @click.prevent.stop="closeFile(item.fileIndex)"
+              />
+            </template>
+          </v-list-item>
+          <v-list-item
+            v-else-if="item.action === 'new'"
+            link
+            :prepend-icon="item.icon"
+            :title="item.text"
+            @click="createNewFile"
           >
           </v-list-item>
         </template>
@@ -214,5 +270,16 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.5rem;
   user-select: none;
+}
+.close-tab-btn {
+  opacity: 0.35;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+.v-list-item:hover .close-tab-btn {
+  opacity: 0.8;
+}
+.close-tab-btn:hover {
+  opacity: 1 !important;
+  color: rgb(var(--v-theme-error)) !important;
 }
 </style>

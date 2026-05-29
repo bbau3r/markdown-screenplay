@@ -81,11 +81,44 @@ export const useFileStore = defineStore('files', {
       return this.files[index];
     },
     pushFile(file: FileData) {
-      const maxFiles = 1;
-      if (this.files.length === maxFiles)
-        this.files.pop();
+      const maxFiles = 5;
+      if (this.files.length >= maxFiles) {
+        this.files.shift();
+      }
+      this.files.push(file);
+    },
+    createNewFile() {
+      // Find a unique filename
+      let nextNum = 1;
+      let newName = "untitled.mdsp";
+      while (this.files.some(f => f.fileName.toLowerCase() === newName.toLowerCase())) {
+        nextNum++;
+        newName = `untitled_${nextNum}.mdsp`;
+      }
 
-      this.files.unshift(file);
+      const defaultMetadata: MetadataData = {
+        title: "Untitled Screenplay",
+        version: "1.0",
+        authors: [""],
+      };
+
+      const defaultRawContent = buildYamlFrontmatter(defaultMetadata) + "\n\n";
+
+      const newFile: FileData = {
+        content: rebuildContent(defaultRawContent, defaultMetadata),
+        rawContent: defaultRawContent,
+        scenes: [],
+        characters: [],
+        fileName: newName,
+        metadata: defaultMetadata
+      };
+
+      this.pushFile(newFile);
+    },
+    removeFile(index: number) {
+      if (index >= 0 && index < this.files.length) {
+        this.files.splice(index, 1);
+      }
     },
     updateMetadata(index: number, metadata: MetadataData) {
       const file = this.files[index];
