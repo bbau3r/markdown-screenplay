@@ -127,11 +127,11 @@ export function useElementKeydown(
             > = {
               "dialog-character": "action",
               "dialog-parenthetical": "dialog",
-              dialog: "dialog-character",
+              "dialog": "dialog-character",
               "scene-heading-sub": "scene-heading",
               "scene-heading": "action",
               "scene-transition": "action",
-              action: "action",
+              "action": "action",
             };
             const nextType = demotionMap[element.type] || "action";
             emit("update:type", { id: element.id, type: nextType });
