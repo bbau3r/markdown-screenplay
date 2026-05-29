@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, onMounted, inject, nextTick } from "vue";
+import { computed, watch, onMounted, inject } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 import MetaDataSection from "@/components/viewer/MetaDataSection.vue";
@@ -55,26 +55,13 @@ function loadFileIntoEditor() {
   }
 }
 
-function focusActiveTab() {
-  nextTick(() => {
-    const activeTab = document.querySelector(
-      ".v-navigation-drawer .v-list-item--active",
-    );
-    if (activeTab) {
-      (activeTab as HTMLElement).focus();
-    }
-  });
-}
-
 onMounted(() => {
   loadFileIntoEditor();
-  focusActiveTab();
 });
 
 // Reload editor if we switch to a different file
 watch(fileId, () => {
   loadFileIntoEditor();
-  focusActiveTab();
 });
 
 // Watch editor contents and write back to fileStore to keep viewer in sync

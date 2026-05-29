@@ -1,21 +1,4 @@
 <script setup lang="ts">
-import sampleContent from "../../../../samples/12_angry_men.mdsp?raw";
-import { ReadFileService } from "@/services/readfile-service";
-import { useFileStore } from "@/store/fileStore";
-import { useRouter } from "vue-router";
-
-const readFileService = new ReadFileService();
-const fileStore = useFileStore();
-const router = useRouter();
-
-function loadSample() {
-  const file = readFileService.processContent(
-    sampleContent,
-    "12_angry_men.mdsp",
-  );
-  fileStore.pushFile(file);
-  router.push({ path: `/view/${fileStore.files.length - 1}` });
-}
 </script>
 <style scoped>
 code {
@@ -160,19 +143,5 @@ code,
       to detect character involvement and power advanced features like
       filtering, highlighting, and interaction analysis.
     </p>
-    <h2>Samples</h2>
-    <p>
-      Below are sample screenplays, in the markdown format, that can be loaded
-      into the viewer:
-    </p>
-    <v-btn
-      class="mt-2"
-      color="secondary"
-      variant="tonal"
-      rounded
-      @click="loadSample"
-    >
-      12 Angry Men
-    </v-btn>
   </div>
 </template>

@@ -4,7 +4,7 @@ import {
   ReadFileServiceKey,
 } from "@/services/readfile-service";
 import FileSelector from "@/components/viewer/FileSelector.vue";
-import { onBeforeUnmount, onMounted, provide } from "vue";
+import { onBeforeUnmount, onMounted, provide, computed } from "vue";
 import type { FileData } from "@/interfaces/file-data";
 import { useFileStore } from "@/store/fileStore";
 import { useRouter } from "vue-router";
@@ -14,6 +14,26 @@ provide(ReadFileServiceKey, readFileService);
 
 const fileStore = useFileStore();
 const router = useRouter();
+
+const samplesGlob = import.meta.glob('../../../../samples/*.mdsp', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+
+const samplesList = computed(() => {
+  return Object.keys(samplesGlob).map((path) => {
+    const filename = path.split('/').pop() || '';
+    const nameWithoutExt = filename.replace(/\.mdsp$/i, '');
+    const cleanName = nameWithoutExt.replace(/_/g, ' ');
+    const displayName = cleanName
+      .split(' ')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    
+    return {
+      filename,
+      displayName,
+      routePath: `/samples/${nameWithoutExt}`
+    };
+  });
+});
 
 function handleReadFileComplete(event: FileData) {
   fileStore.pushFile(event);
@@ -71,8 +91,33 @@ const handleDrop = (event: DragEvent) => {
   loadFile(file);
 };
 </script>
+
 <template>
   <div @dragover.prevent @drop="handleDrop">
     <file-selector></file-selector>
+
+    <div class="mx-auto px-6" style="max-width: 450px;">
+      <!-- Divider with Text -->
+      <div class="d-flex align-center my-6">
+        <v-divider class="flex-grow-1" />
+        <span class="mx-4 text-overline text-medium-emphasis font-weight-bold text-no-wrap">Sample Files</span>
+        <v-divider class="flex-grow-1" />
+      </div>
+
+      <!-- Flex Wrap Grid of Samples -->
+      <div class="d-flex flex-wrap justify-center ga-3 pb-6">
+        <v-btn
+          v-for="sample in samplesList"
+          :key="sample.filename"
+          color="secondary"
+          variant="tonal"
+          rounded
+          :to="sample.routePath"
+          prepend-icon="mdi-file-document-outline"
+        >
+          {{ sample.displayName }}
+        </v-btn>
+      </div>
+    </div>
   </div>
 </template>
