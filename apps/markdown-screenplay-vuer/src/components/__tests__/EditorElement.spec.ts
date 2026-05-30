@@ -14,11 +14,23 @@ const mockRange = {
 const mockSelection = {
   rangeCount: 1,
   getRangeAt: () => mockRange,
-  removeAllRanges: () => {},
-  addRange: () => {},
+  removeAllRanges: () => { },
+  addRange: () => { },
 };
 
 vi.stubGlobal("getSelection", () => mockSelection);
+
+let overrideCaretOffset: number | null = null;
+vi.mock("../editor/caret", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../editor/caret")>();
+  return {
+    ...original,
+    getCaretOffset: (element: HTMLElement) => {
+      if (overrideCaretOffset !== null) return overrideCaretOffset;
+      return original.getCaretOffset(element);
+    },
+  };
+});
 
 describe("EditorElement.vue Backspace Demotion", () => {
   const mountElement = (element: ScreenplayElement) => {
@@ -323,5 +335,215 @@ describe("EditorElement.vue Backspace Demotion", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("demotes empty dialog to action when Enter is pressed", async () => {
+    const el: ScreenplayElement = {
+      id: "el-empty-dlg",
+      type: "dialog",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+
+    (contentDiv.element as HTMLDivElement).innerText = "";
+
+    await contentDiv.trigger("keydown", { key: "Enter" });
+
+    const emittedType = wrapper.emitted("update:type");
+    expect(emittedType).toBeTruthy();
+    expect(emittedType![0][0]).toEqual({
+      id: "el-empty-dlg",
+      type: "action",
+    });
+  });
+
+  it("converts @JOHN followed by space to dialog-character", async () => {
+    const el: ScreenplayElement = {
+      id: "el-typing-char",
+      type: "action",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+
+    (contentDiv.element as HTMLDivElement).innerText = "@JOHN";
+    overrideCaretOffset = 5;
+
+    await contentDiv.trigger("keydown", { key: " " });
+
+    overrideCaretOffset = null;
+
+    const emittedType = wrapper.emitted("update:type");
+    expect(emittedType).toBeTruthy();
+    expect(emittedType![0][0]).toEqual({
+      id: "el-typing-char",
+      type: "dialog-character",
+    });
+
+    const emittedText = wrapper.emitted("update:text");
+    expect(emittedText).toBeTruthy();
+    expect(emittedText![0][0]).toEqual({
+      id: "el-typing-char",
+      text: "JOHN",
+    });
+  });
+
+  it("converts alias format followed by space to dialog-character", async () => {
+    const el: ScreenplayElement = {
+      id: "el-typing-alias",
+      type: "action",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+
+    (contentDiv.element as HTMLDivElement).innerText = "[BOB](Robert) (cont'd)";
+    overrideCaretOffset = 23;
+
+    await contentDiv.trigger("keydown", { key: " " });
+
+    overrideCaretOffset = null;
+
+    const emittedType = wrapper.emitted("update:type");
+    expect(emittedType).toBeTruthy();
+    expect(emittedType![0][0]).toEqual({
+      id: "el-typing-alias",
+      type: "dialog-character",
+    });
+
+    const emittedText = wrapper.emitted("update:text");
+    expect(emittedText).toBeTruthy();
+    expect(emittedText![0][0]).toEqual({
+      id: "el-typing-alias",
+      text: "[BOB](Robert) (cont'd)",
+    });
+  });
+
+  it("converts action with @JOHN to dialog-character on Enter", async () => {
+    const el: ScreenplayElement = {
+      id: "el-enter-char",
+      type: "action",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+
+    (contentDiv.element as HTMLDivElement).innerText = "@JOHN";
+    overrideCaretOffset = 5;
+
+    await contentDiv.trigger("keydown", { key: "Enter" });
+
+    overrideCaretOffset = null;
+
+    const emittedType = wrapper.emitted("update:type");
+    expect(emittedType).toBeTruthy();
+    expect(emittedType![0][0]).toEqual({
+      id: "el-enter-char",
+      type: "dialog-character",
+    });
+
+    const emittedText = wrapper.emitted("update:text");
+    expect(emittedText).toBeTruthy();
+    expect(emittedText![0][0]).toEqual({
+      id: "el-enter-char",
+      text: "JOHN",
+    });
+
+    const emittedSplit = wrapper.emitted("split");
+    expect(emittedSplit).toBeTruthy();
+    expect(emittedSplit![0][0]).toEqual({
+      id: "el-enter-char",
+      text1: "JOHN",
+      text2: "",
+    });
+  });
+
+  it("converts action with alias to dialog-character on Enter", async () => {
+    const el: ScreenplayElement = {
+      id: "el-enter-alias",
+      type: "action",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+
+    (contentDiv.element as HTMLDivElement).innerText = "[BOB](Robert) (cont'd)";
+    overrideCaretOffset = 23;
+
+    await contentDiv.trigger("keydown", { key: "Enter" });
+
+    overrideCaretOffset = null;
+
+    const emittedType = wrapper.emitted("update:type");
+    expect(emittedType).toBeTruthy();
+    expect(emittedType![0][0]).toEqual({
+      id: "el-enter-alias",
+      type: "dialog-character",
+    });
+
+    const emittedText = wrapper.emitted("update:text");
+    expect(emittedText).toBeTruthy();
+    expect(emittedText![0][0]).toEqual({
+      id: "el-enter-alias",
+      text: "[BOB](Robert) (cont'd)",
+    });
+
+    const emittedSplit = wrapper.emitted("split");
+    expect(emittedSplit).toBeTruthy();
+    expect(emittedSplit![0][0]).toEqual({
+      id: "el-enter-alias",
+      text1: "[BOB](Robert) (cont'd)",
+      text2: "",
+    });
+  });
+
+  it("converts dialog-character to action when Enter is pressed on empty content", async () => {
+    const el: ScreenplayElement = {
+      id: "el-empty-char-enter",
+      type: "dialog-character",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+    (contentDiv.element as HTMLDivElement).innerText = "";
+
+    await contentDiv.trigger("keydown", { key: "Enter" });
+
+    const emittedType = wrapper.emitted("update:type");
+    expect(emittedType).toBeTruthy();
+    expect(emittedType![0][0]).toEqual({
+      id: "el-empty-char-enter",
+      type: "action",
+    });
+
+    const emittedText = wrapper.emitted("update:text");
+    expect(emittedText).toBeTruthy();
+    expect(emittedText![0][0]).toEqual({
+      id: "el-empty-char-enter",
+      text: "",
+    });
+  });
+
+  it("splits empty action and emits split when Enter is pressed on empty action", async () => {
+    const el: ScreenplayElement = {
+      id: "el-empty-act-enter",
+      type: "action",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+    (contentDiv.element as HTMLDivElement).innerText = "";
+
+    await contentDiv.trigger("keydown", { key: "Enter" });
+
+    expect(wrapper.emitted("update:type")).toBeFalsy();
+    const emittedSplit = wrapper.emitted("split");
+    expect(emittedSplit).toBeTruthy();
+    expect(emittedSplit![0][0]).toEqual({
+      id: "el-empty-act-enter",
+      text1: "",
+      text2: "",
+    });
   });
 });

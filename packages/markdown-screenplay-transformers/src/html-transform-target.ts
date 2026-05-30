@@ -33,30 +33,32 @@ export class HTMLTransformTarget implements TransformTarget<string> {
 
   ProcessSceneHeading(line: string, handleNewScene: boolean): void {
     this.closeActiveSection();
-    const atRun = HTMLTransformTarget.leadingCharRunLength(line);
-    this._output += `<div id="${this.formatString(this._sceneAnchorFormat, this._headingCount + "")}" class="scene-heading"${handleNewScene ? ` data-scene-count="${this._sceneCount}"` : ""}>${this.identifyCharacter(line.slice(atRun).toUpperCase().trim())}</div>\n`;
+    this._output += `<div id="${this.formatString(this._sceneAnchorFormat, this._headingCount + "")}" class="scene-heading"${handleNewScene ? ` data-scene-count="${this._sceneCount}"` : ""}>${this.identifyCharacter(line.toUpperCase().trim())}</div>\n`;
     this._headingCount++;
     if (handleNewScene)
       this._sceneCount++;
   }
   ProcessSceneTransition(line: string): void {
     this.closeActiveSection();
-    this._output += `<p class="scene-transition">${line.slice(1).toUpperCase()}:</p>\n`;
+    this._output += `<p class="scene-transition">${line.toUpperCase()}:</p>\n`;
   }
   ProcessDialog(line: string): void {
-    const trimmedLine: string = line.slice(2).trim();
-    const isParenthetical: boolean = trimmedLine.startsWith("(");
+    const isParenthetical: boolean = line.startsWith("(");
     const classType: string = `dialog${isParenthetical ? "-parenthetical" : ""}`;
-    this._output += `<p class="${classType}">${this.formatLine(isParenthetical ? trimmedLine.toLowerCase() : trimmedLine)}</p>\n`;
+    this._output += `<p class="${classType}">${this.formatLine(isParenthetical ? line.toLowerCase() : line)}</p>\n`;
   }
   ProcessDialogCharacter(line: string): void {
     this.closeActiveSection();
     this.openActiveSection();
-    this._output += `<p class="dialog-heading">${this.formatLine(line.slice(1).toUpperCase())}</p>\n`;
+    this._output += `<p class="dialog-heading">${this.formatLine(line.toUpperCase())}</p>\n`;
   }
   ProcessDefault(line: string): void {
     this.closeActiveSection();
-    this._output += `<p class="section">${this.formatLine(line)}</p>\n`;
+    const isCentered = line.startsWith(">") && line.endsWith("<");
+    if (isCentered)
+      this._output += `<p class="centered">${this.formatLine(line.slice(2, -2).trim())}</p>\n`;
+    else
+      this._output += `<p class="section">${this.formatLine(line)}</p>\n`;
   }
 
   private openActiveSection(): void {
@@ -162,13 +164,6 @@ export class HTMLTransformTarget implements TransformTarget<string> {
     if (render) render += "<hr/>";
 
     return render;
-  }
-
-  private static leadingCharRunLength(line: string): number {
-    if (line.length === 0) return 0;
-    const char = line[0];
-    const match = new RegExp(`^${char}+`).exec(line);
-    return match ? match[0].length : 0;
   }
 
 }

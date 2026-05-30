@@ -1,0 +1,509 @@
+/* Screenplay MDSP Plugin Styles */
+
+/* Enforce monospace font for the screenplay container */
+.mdsp-enabled .cm-content,
+.mdsp-enabled .markdown-preview-view,
+.mdsp-enabled .markdown-rendered {
+  font-family: "Courier Prime", "Courier New", Courier, monospace !important;
+  font-size: 17px !important;
+  line-height: 1.5 !important;
+  max-width: 800px !important;
+  margin: 0 auto !important;
+  padding: 40px !important;
+  background-color: var(--background-primary) !important;
+}
+
+/* ========================================================================= */
+/* BLOCKQUOTE & QUOTE RESET                                                  */
+/* ========================================================================= */
+
+/* Remove blockquote border, background, and padding/margins in screenplay editor and preview */
+.mdsp-enabled .HyperMD-quote,
+.mdsp-enabled .cm-quote,
+.mdsp-enabled blockquote,
+.mdsp-enabled .cm-activeLine.HyperMD-quote,
+.mdsp-enabled .cm-activeLine.cm-quote {
+  border-left: none !important;
+  border-right: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Hide the vertical line pseudo-elements Obsidian uses for blockquotes */
+.mdsp-enabled .HyperMD-quote::before,
+.mdsp-enabled .cm-quote::before,
+.mdsp-enabled .cm-activeLine.HyperMD-quote::before,
+.mdsp-enabled .cm-activeLine.cm-quote::before,
+.mdsp-enabled .cm-formatting-quote::before,
+.mdsp-enabled blockquote::before {
+  display: none !important;
+  content: none !important;
+  background: none !important;
+  border: none !important;
+  width: 0 !important;
+}
+
+/* ========================================================================= */
+/* SCREENPLAY LINE FORMATTING & SPECIFIC LAYOUTS                             */
+/* ========================================================================= */
+
+/* Dialogue Headings (Character Names) */
+.mdsp-enabled .cm-line.cm-mdsp-dialog-heading,
+.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog-heading,
+.mdsp-enabled .cm-mdsp-dialog-heading {
+  font-size: 17px !important;
+  text-align: center !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 1.2em !important;
+  padding-bottom: 0.2em !important;
+}
+
+/* Dialogue Parentheticals */
+.mdsp-enabled .cm-line.cm-mdsp-dialog-parenthetical,
+.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog-parenthetical,
+.mdsp-enabled .cm-mdsp-dialog-parenthetical {
+  font-size: 17px !important;
+  text-align: left !important;
+  font-style: italic !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  margin-left: 30% !important;
+  margin-right: 20% !important;
+  padding-top: 0.2em !important;
+  padding-bottom: 0.2em !important;
+  padding-left: 0.1em !important;
+  padding-right: 0 !important;
+}
+
+/* Dialogue blocks */
+.mdsp-enabled .cm-line.cm-mdsp-dialog,
+.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog,
+.mdsp-enabled .cm-mdsp-dialog {
+  font-size: 17px !important;
+  text-align: left !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  margin-left: 20% !important;
+  margin-right: 20% !important;
+  padding-top: 0.2em !important;
+  padding-bottom: 0.5em !important;
+  padding-left: 0.1em !important;
+}
+
+/* Scene Headings */
+.mdsp-enabled .cm-line.cm-mdsp-scene-heading,
+.mdsp-enabled .cm-line.cm-mdsp-scene-heading-sub,
+.mdsp-enabled .cm-mdsp-scene-heading,
+.mdsp-enabled .cm-mdsp-scene-heading-sub {
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 1.5em !important;
+  padding-bottom: 0.5em !important;
+}
+
+/* Scene Transitions */
+.mdsp-enabled .cm-line.cm-mdsp-scene-transition,
+.mdsp-enabled .cm-mdsp-scene-transition {
+  font-size: 17px !important;
+  text-align: right !important;
+  text-transform: uppercase !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 1em !important;
+  padding-bottom: 1em !important;
+  padding-right: 10% !important;
+}
+
+.mdsp-enabled .cm-line.cm-mdsp-scene-transition::after,
+.mdsp-enabled .cm-mdsp-scene-transition::after {
+  content: ":" !important;
+}
+
+/* Centered Action */
+.mdsp-enabled .cm-line.cm-mdsp-centered,
+.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-centered,
+.mdsp-enabled .cm-mdsp-centered {
+  font-size: 17px !important;
+  text-align: center !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0.8em !important;
+  padding-bottom: 0.8em !important;
+}
+
+/* Action Blocks */
+.mdsp-enabled .cm-line.cm-mdsp-action,
+.mdsp-enabled .cm-mdsp-action {
+  font-size: 17px !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0.8em !important;
+  padding-bottom: 0.8em !important;
+}
+
+/* Hide markdown screenplay prefix formatting characters when cursor is not on the line */
+.cm-mdsp-syntax-hidden {
+  display: none !important;
+}
+
+/* Character references highlighting */
+.cm-mdsp-character-highlight {
+  border-radius: 4px;
+  padding: 1px 3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+  text-transform: uppercase !important; /* Force uppercase display in editor */
+}
+
+/* Strip Obsidian's standard link styling (underlines, color, border) and disable pointer events when formatted as a character */
+.mdsp-enabled .cm-mdsp-character-highlight,
+.mdsp-enabled .cm-mdsp-character-highlight *,
+.mdsp-enabled .cm-mdsp-character-active,
+.mdsp-enabled .cm-mdsp-character-active * {
+  color: var(--text-normal) !important;
+  text-decoration: none !important;
+  border-bottom: none !important;
+  pointer-events: none !important; /* Disable hover previews and link clicks */
+  cursor: text !important; /* Force standard text selection cursor instead of link hand pointer */
+}
+
+/* Frontmatter / Properties styling */
+.cm-line.cm-mdsp-property-divider {
+  color: var(--text-muted) !important;
+  font-family: var(--font-monospace) !important;
+  font-size: 13px !important;
+  opacity: 0.5;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-bottom: 1px dashed var(--background-modifier-border) !important;
+}
+
+.cm-line.cm-mdsp-property-line {
+  font-family: var(--font-monospace) !important;
+  font-size: 13px !important;
+  color: var(--text-muted) !important;
+  line-height: 1.6 !important;
+  padding-left: 15px !important;
+  background-color: var(--background-secondary-alt) !important;
+}
+
+/* Key styling */
+.cm-mdsp-property-key {
+  color: var(--text-accent) !important;
+  font-weight: 600;
+}
+
+/* Value styling */
+.cm-mdsp-property-value {
+  color: var(--text-normal) !important;
+}
+
+/* ========================================================================= */
+/* CUSTOM PROPERTIES PANEL                                                   */
+/* ========================================================================= */
+
+/* Hide the entire native Obsidian Properties panel on screenplay files */
+.mdsp-enabled .metadata-container {
+  display: none !important;
+}
+
+/* ── Panel shell ── */
+.mdsp-props-panel {
+  margin: 12px 16px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-secondary);
+  overflow: hidden;
+}
+
+.mdsp-props-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 10px 16px 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.mdsp-props-body {
+  padding: 4px 0;
+}
+
+/* ── Generic property rows ── */
+.mdsp-prop-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 16px;
+  min-height: 28px;
+}
+
+.mdsp-prop-label {
+  flex-shrink: 0;
+  width: 80px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: lowercase;
+}
+
+.mdsp-prop-value {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-normal);
+  outline: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: text;
+  transition: background 0.15s ease;
+}
+
+.mdsp-prop-value:focus {
+  background: var(--background-modifier-form-field);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+/* Array values rendered as inline tags */
+.mdsp-prop-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+
+.mdsp-prop-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* ── Authors block ── */
+.mdsp-authors-block {
+  border-top: 1px solid var(--background-modifier-border);
+  padding: 6px 0 4px;
+}
+
+.mdsp-authors-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: lowercase;
+  padding: 0 16px 4px;
+}
+
+.mdsp-authors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 8px;
+}
+
+.mdsp-author-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.mdsp-author-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.mdsp-author-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-normal);
+  outline: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: text;
+  transition: background 0.15s ease;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.mdsp-author-name:focus {
+  background: var(--background-modifier-form-field);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.mdsp-author-del {
+  cursor: pointer;
+  opacity: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-muted);
+  padding: 0 4px;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.mdsp-author-row:hover .mdsp-author-del {
+  opacity: 0.5;
+}
+
+.mdsp-author-del:hover {
+  opacity: 1 !important;
+  color: var(--text-error) !important;
+}
+
+.mdsp-author-add-btn {
+  cursor: pointer;
+  padding: 5px 10px;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  border-radius: 6px;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+  user-select: none;
+}
+
+.mdsp-author-add-btn:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+/* ── Characters block ── */
+.mdsp-chars-block {
+  border-top: 1px solid var(--background-modifier-border);
+  padding: 6px 0 4px;
+}
+
+.mdsp-chars-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: lowercase;
+  padding: 0 16px 4px;
+}
+
+.mdsp-chars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 8px;
+}
+
+.mdsp-char-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.mdsp-char-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.mdsp-char-bubble {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.mdsp-char-bubble:hover {
+  transform: scale(1.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.mdsp-char-bubble-empty {
+  background-color: transparent !important;
+  border: 1.5px dashed var(--text-muted) !important;
+  opacity: 0.5;
+}
+
+.mdsp-char-picker {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.mdsp-char-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-normal);
+  outline: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: text;
+  transition: background 0.15s ease;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.mdsp-char-name:focus {
+  background: var(--background-modifier-form-field);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.mdsp-char-del {
+  cursor: pointer;
+  opacity: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-muted);
+  padding: 0 4px;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.mdsp-char-row:hover .mdsp-char-del {
+  opacity: 0.5;
+}
+
+.mdsp-char-del:hover {
+  opacity: 1 !important;
+  color: var(--text-error) !important;
+}
+
+.mdsp-char-add-btn {
+  cursor: pointer;
+  padding: 5px 10px;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  border-radius: 6px;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+  user-select: none;
+}
+
+.mdsp-char-add-btn:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}

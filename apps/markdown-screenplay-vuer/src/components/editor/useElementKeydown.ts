@@ -35,8 +35,42 @@ export function useElementKeydown(
       flushDebounce();
     }
 
-    // 1. Enter key: split element
+    // 1. Enter key: split element or convert empty non-action elements to action, or action with character prefix to dialog-character
     if (event.key === "Enter" && !event.shiftKey) {
+      if (editorRef.value && editorRef.value.innerText.trim() === "" && element.type !== "action") {
+        event.preventDefault();
+        if (options?.onUpdateLastEmittedText) {
+          options.onUpdateLastEmittedText("");
+        }
+        emit("update:text", { id: element.id, text: "" });
+        emit("update:type", { id: element.id, type: "action" });
+        return;
+      }
+
+      if (element.type === "action" && editorRef.value) {
+        const text = editorRef.value.innerText.trim();
+        const isChar = (text.startsWith("@") && text.length > 1) || (text.startsWith("[") && /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(text));
+        if (isChar) {
+          event.preventDefault();
+          const offset = getCaretOffset(editorRef.value);
+          const fullText = editorRef.value.innerText;
+          const textBeforeCursor = fullText.slice(0, offset).trim();
+          const textAfterCursor = fullText.slice(offset).trim();
+
+          let charText = textBeforeCursor;
+          if (charText.startsWith("@")) {
+            charText = charText.slice(1).trim();
+          }
+
+          emit("update:type", { id: element.id, type: "dialog-character" });
+          emit("update:text", { id: element.id, text: charText });
+          editorRef.value.innerText = charText;
+
+          emit("split", { id: element.id, text1: charText, text2: textAfterCursor });
+          return;
+        }
+      }
+
       event.preventDefault();
       if (editorRef.value) {
         const offset = getCaretOffset(editorRef.value);
@@ -53,36 +87,43 @@ export function useElementKeydown(
     }
 
     // 2. Space key: check markdown prefix shortcuts
-    if (event.key === " ") {
+    if (event.key === " " && element.type === "action") {
       if (editorRef.value) {
         const offset = getCaretOffset(editorRef.value);
         const text = editorRef.value.innerText;
-        const prefix = text.slice(0, offset);
-        const prefixes = ["##", "#", ">>", ">", ":"];
+        const prefix = text.slice(0, offset).trim();
+        const remainingText = text.slice(offset);
 
-        if (prefixes.includes(prefix)) {
+        let newType: ScreenplayElementType | null = null;
+        let newText = remainingText;
+
+        if (prefix === "##") {
+          newType = "scene-heading-sub";
+        } else if (prefix === "#") {
+          newType = "scene-heading";
+        } else if (prefix === ":") {
+          newType = "scene-transition";
+        } else if (prefix.startsWith("@")) {
+          newType = "dialog-character";
+          newText = prefix.slice(1).trim() + remainingText;
+        } else if (prefix.startsWith("[") && /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(prefix)) {
+          newType = "dialog-character";
+          newText = prefix + remainingText;
+        }
+
+        if (newType !== null) {
           event.preventDefault();
-          const typeMap: Record<string, ScreenplayElementType> = {
-            "##": "scene-heading-sub",
-            "#": "scene-heading",
-            ">>": "dialog",
-            ">": "dialog-character",
-            ":": "scene-transition",
-          };
-          const newType = typeMap[prefix];
-          const remainingText = text.slice(offset);
-
           emit("update:type", { id: element.id, type: newType });
 
-          editorRef.value.innerText = remainingText;
+          editorRef.value.innerText = newText;
           if (options?.onUpdateLastEmittedText) {
-            options.onUpdateLastEmittedText(remainingText);
+            options.onUpdateLastEmittedText(newText);
           }
-          emit("update:text", { id: element.id, text: remainingText });
+          emit("update:text", { id: element.id, text: newText });
 
           nextTick(() => {
             if (editorRef.value) {
-              setCursorOffset(editorRef.value, 0);
+              setCursorOffset(editorRef.value, newText.length);
             }
           });
           return;
@@ -116,8 +157,15 @@ export function useElementKeydown(
           }
         } else if (event.key === "Backspace" && editorRef.value && isCaretAtStart(editorRef.value)) {
           // 3. Only merge if no text is selected (caret is collapsed) on Backspace
-          if (element.text === "" || element.type === "action") {
+          const isDOMEmpty = editorRef.value.innerText.trim() === "";
+          if (isDOMEmpty || element.type === "action") {
             event.preventDefault();
+            if (isDOMEmpty) {
+              if (options?.onUpdateLastEmittedText) {
+                options.onUpdateLastEmittedText("");
+              }
+              emit("update:text", { id: element.id, text: "" });
+            }
             emit("merge-previous", element.id);
           } else {
             event.preventDefault();

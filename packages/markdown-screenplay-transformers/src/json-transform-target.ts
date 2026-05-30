@@ -9,20 +9,18 @@ export class JsonTransformTarget implements TransformTarget<ScreenplayElement[]>
   private _elements: ScreenplayElement[] = [];
 
   ProcessSceneHeading(line: string, handleNewScene: boolean): void {
-    // Strip leading '#' characters and trim
-    const atRun = JsonTransformTarget.leadingCharRunLength(line);
-    const text = line.slice(atRun).trim();
+    const text = line.trim();
     const type = handleNewScene ? 'scene-heading' : 'scene-heading-sub';
     this._elements.push(createElement(type, text));
   }
 
   ProcessSceneTransition(line: string): void {
-    const text = line.slice(1).trim();
+    const text = line.trim();
     this._elements.push(createElement('scene-transition', text));
   }
 
   ProcessDialog(line: string): void {
-    const trimmed = line.slice(2).trim();
+    const trimmed = line.trim();
     const isParenthetical = trimmed.startsWith("(");
     if (isParenthetical) {
       this._elements.push(createElement('dialog-parenthetical', trimmed));
@@ -32,7 +30,10 @@ export class JsonTransformTarget implements TransformTarget<ScreenplayElement[]>
   }
 
   ProcessDialogCharacter(line: string): void {
-    const text = line.slice(1).trim();
+    let text = line.trim();
+    if (text.startsWith("@")) {
+      text = text.slice(1).trim();
+    }
     this._elements.push(createElement('dialog-character', text));
   }
 
@@ -42,12 +43,5 @@ export class JsonTransformTarget implements TransformTarget<ScreenplayElement[]>
 
   GenerateOutput(_yamlData: YAMLTreeNode): ScreenplayElement[] {
     return [...this._elements];
-  }
-
-  private static leadingCharRunLength(line: string): number {
-    if (line.length === 0) return 0;
-    const char = line[0];
-    const match = new RegExp(`^${char}+`).exec(line);
-    return match ? match[0].length : 0;
   }
 }

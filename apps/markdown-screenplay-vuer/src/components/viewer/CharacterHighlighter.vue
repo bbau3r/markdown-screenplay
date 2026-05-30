@@ -29,7 +29,6 @@ watch(activeModel, (isActive) => {
 });
 
 function updateElements() {
-  console.log(colorModel.value);
   const elements = document.querySelectorAll(
     `[data-character="${props.name.toLowerCase()}"]`,
   );

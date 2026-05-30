@@ -7,7 +7,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("# INT. HOUSE - DAY\n> JOHN\n>> Hello world!");
+    store.loadFromRawContent("# INT. HOUSE - DAY\n\n@JOHN\nHello world!");
 
     expect(store.elements.length).toBe(3);
     expect(store.elements[0].type).toBe("scene-heading");
@@ -32,7 +32,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("Line 1\nLine 2");
+    store.loadFromRawContent("Line 1\n\nLine 2");
     expect(store.elements.length).toBe(2);
 
     const secondElId = store.elements[1].id;
@@ -49,7 +49,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("Line 1\nLine 2\nLine 3\nLine 4");
+    store.loadFromRawContent("Line 1\n\nLine 2\n\nLine 3\n\nLine 4");
     expect(store.elements.length).toBe(4);
 
     const ids = store.elements.map((e) => e.id);
@@ -74,7 +74,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("# INT. HOUSE - DAY\nLine 1");
+    store.loadFromRawContent("# INT. HOUSE - DAY\n\nLine 1");
     expect(store.elements.length).toBe(2);
 
     // Call ensurePlaceholders (normally run by EditorContent watcher)
@@ -89,14 +89,14 @@ describe("editorStore", () => {
     expect(store.elements[3].text).toBe("");
 
     // Serialized output should strip the empty top and bottom placeholders!
-    expect(store.serializedMdsp).toBe("# INT. HOUSE - DAY\nLine 1");
+    expect(store.serializedMdsp).toBe("# INT. HOUSE - DAY\n\nLine 1");
   });
 
   it("transitions element to/from dialog-parenthetical formatting the text correctly", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("# INT. HOUSE - DAY\n> JOHN\n>> Hello");
+    store.loadFromRawContent("# INT. HOUSE - DAY\n\n@JOHN\nHello");
     expect(store.elements.length).toBe(3);
     const dialogEl = store.elements[2];
     expect(dialogEl.type).toBe("dialog");
@@ -136,7 +136,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("Line 1\nLine 2");
+    store.loadFromRawContent("Line 1\n\nLine 2");
     expect(store.undoStack.length).toBe(0);
     expect(store.redoStack.length).toBe(0);
 
@@ -195,7 +195,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("Line 1\nLine 2");
+    store.loadFromRawContent("Line 1\n\nLine 2");
     const firstId = store.elements[0].id;
 
     // Type text
@@ -204,7 +204,7 @@ describe("editorStore", () => {
 
     // Non-text action: update type
     store.updateElementType(firstId, "scene-heading");
-    
+
     // Changing type should push the typed text to undoStack (making it length 2)
     expect(store.undoStack.length).toBe(2);
     expect(store.undoStack[1].elements[0].text).toBe("Line 1 typed");
@@ -227,7 +227,7 @@ describe("editorStore", () => {
       // Force non-text change to push snapshots
       store.updateElementType(firstId, i % 2 === 0 ? "scene-heading" : "action");
     }
-    
+
     // Stack should be capped at 100
     expect(store.undoStack.length).toBe(100);
   });
@@ -246,7 +246,7 @@ describe("editorStore", () => {
 
     // Type text immediately on the new element
     store.updateElementText(newEl.id, "ne 1 edited");
-    
+
     // Typing text should NOT push a new snapshot because it is bundled!
     expect(store.undoStack.length).toBe(1);
 
@@ -261,21 +261,34 @@ describe("editorStore", () => {
     const store = useEditorStore();
 
     store.loadFromRawContent("Line 1");
-    
+
     const meta = { title: "My Script", version: "1", authors: ["Me"] };
-    
+
     // Call setMetadata first time
     store.setMetadata(meta);
     expect(store.undoStack.length).toBe(1); // 1 snapshot pushed
 
     // Call setMetadata second time with the same values
     store.setMetadata({ ...meta });
-    
+
     // Should NOT push a duplicate snapshot
     expect(store.undoStack.length).toBe(1);
-    
+
     // Call setMetadata third time with different metadata
     store.setMetadata({ title: "My Script Changed", version: "1", authors: ["Me"] });
     expect(store.undoStack.length).toBe(2); // new snapshot pushed
+  });
+
+  it("parses and serializes character alias format [alias](name) correctly", () => {
+    setActivePinia(createPinia());
+    const store = useEditorStore();
+
+    store.loadFromRawContent("# INT. HOUSE - DAY\n\n[BOB](Robert) (cont'd)\nHello world!");
+
+    expect(store.elements.length).toBe(3);
+    expect(store.elements[1].type).toBe("dialog-character");
+    expect(store.elements[1].text).toBe("[BOB](Robert) (cont'd)");
+
+    expect(store.serializedMdsp).toBe("# INT. HOUSE - DAY\n\n[BOB](Robert) (cont'd)\nHello world!");
   });
 });
