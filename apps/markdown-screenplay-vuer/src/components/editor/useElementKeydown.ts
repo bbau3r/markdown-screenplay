@@ -45,7 +45,7 @@ export function useElementKeydown(
 
       if (element.type === "action" && editorRef.value) {
         const text = editorRef.value.innerText.trim();
-        const isChar = text.startsWith("@") || (text.startsWith("[") && /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(text));
+        const isChar = (text.startsWith("@") && text.length > 1) || (text.startsWith("[") && /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(text));
         if (isChar) {
           event.preventDefault();
           const offset = getCaretOffset(editorRef.value);

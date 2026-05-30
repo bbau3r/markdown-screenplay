@@ -15,9 +15,9 @@ export function serializeToMdsp(elements: ScreenplayElement[]): string {
     if (i > 0) {
       const prevEl = elements[i - 1];
       const isCurrentDialog = el.type === 'dialog' || el.type === 'dialog-parenthetical';
-      const isPrevDialogOrChar = prevEl.type === 'dialog-character' || 
-                                 prevEl.type === 'dialog' || 
-                                 prevEl.type === 'dialog-parenthetical';
+      const isPrevDialogOrChar = prevEl.type === 'dialog-character' ||
+        prevEl.type === 'dialog' ||
+        prevEl.type === 'dialog-parenthetical';
       if (!(isCurrentDialog && isPrevDialogOrChar)) {
         lines.push('');
       }

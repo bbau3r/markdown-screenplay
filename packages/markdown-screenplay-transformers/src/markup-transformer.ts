@@ -81,7 +81,6 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
             name: extractedLine,
             ...(indentCount === 1 ? { isSub: true } : {})
           });
-          console.log(this._scenes);
         }
         else if (isBlankLine) {
           const previousScene = this._scenes[this._scenes.length - 1];

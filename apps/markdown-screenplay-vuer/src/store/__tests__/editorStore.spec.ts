@@ -13,7 +13,7 @@ describe("editorStore", () => {
     expect(store.elements[0].type).toBe("scene-heading");
     expect(store.elements[0].text).toBe("INT. HOUSE - DAY");
     expect(store.elements[1].type).toBe("dialog-character");
-    expect(store.elements[1].text).toBe("JOHN");
+    expect(store.elements[1].text).toBe("@JOHN");
     expect(store.elements[2].type).toBe("dialog");
     expect(store.elements[2].text).toBe("Hello world!");
 

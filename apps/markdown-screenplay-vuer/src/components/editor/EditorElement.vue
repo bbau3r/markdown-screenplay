@@ -87,6 +87,8 @@ watch(
       const newText = props.element.text;
 
       if (isFocused) {
+        if (oldText === newText) return;
+
         const oldOffset = getCaretOffset(editorRef.value);
         const isInto =
           newType === "dialog-parenthetical" &&

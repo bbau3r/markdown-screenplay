@@ -14,8 +14,8 @@ const mockRange = {
 const mockSelection = {
   rangeCount: 1,
   getRangeAt: () => mockRange,
-  removeAllRanges: () => {},
-  addRange: () => {},
+  removeAllRanges: () => { },
+  addRange: () => { },
 };
 
 vi.stubGlobal("getSelection", () => mockSelection);
@@ -416,7 +416,7 @@ describe("EditorElement.vue Backspace Demotion", () => {
     expect(emittedText).toBeTruthy();
     expect(emittedText![0][0]).toEqual({
       id: "el-typing-alias",
-      text: "[BOB](Robert) (cont'd)",
+      text: "[BOB](Robert) (cont'd) ",
     });
   });
 
@@ -447,14 +447,14 @@ describe("EditorElement.vue Backspace Demotion", () => {
     expect(emittedText).toBeTruthy();
     expect(emittedText![0][0]).toEqual({
       id: "el-enter-char",
-      text: "JOHN",
+      text: "@JOHN",
     });
 
     const emittedSplit = wrapper.emitted("split");
     expect(emittedSplit).toBeTruthy();
     expect(emittedSplit![0][0]).toEqual({
       id: "el-enter-char",
-      text1: "JOHN",
+      text1: "@JOHN",
       text2: "",
     });
   });

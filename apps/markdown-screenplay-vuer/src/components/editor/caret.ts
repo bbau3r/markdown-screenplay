@@ -74,10 +74,11 @@ export function setCursorOffset(element: HTMLElement, offset: number): void {
 
   if (targetNode) {
     range.setStart(targetNode, relativeOffset);
+    range.collapse(true);
   } else {
     range.selectNodeContents(element);
+    range.collapse(false);
   }
-  range.collapse(true);
   selection.removeAllRanges();
   selection.addRange(range);
 }
