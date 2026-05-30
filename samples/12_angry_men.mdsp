@@ -1,39 +1,39 @@
 ---
-title: 12 Angry Men
-author: Reginald Rose
+title: "12 Angry Men"
+author: "Reginald Rose"
 version: 1.0
 characters:
-  - FOREMAN
+  FOREMAN
     color: #4a90e27D
-  - Juror #1
+  Juror #1
     color: #d321217d
-  - Juror #2
+  Juror #2
     color: #7ed3217D
-  - Juror #3
+  Juror #3
     color: #f5a6237D
-  - Juror #4
+  Juror #4
     color: #f8e71c7D
-  - Juror #5
+  Juror #5
     color: #bd10e07D
-  - Juror #6
+  Juror #6
     color: #9013fe7D
-  - Juror #7
+  Juror #7
     color: #4a148c7D
-  - Juror #8
+  Juror #8
     color: #50e3c27D
-  - Juror #9
+  Juror #9
     color: #b8e9867D
-  - Juror #10
+  Juror #10
     color: #d0021b7D
-  - Juror #11
+  Juror #11
     color: #1de9b67D
-  - Juror #12
+  Juror #12
     color: #ff007f7D
-  - JUDGE
+  JUDGE
     color: #ff83837D
-  - CLERK
+  CLERK
     color: #ff84847D
-  - GUARD
+  GUARD
     color: #7ad3ff7D
 ---
 
@@ -67,21 +67,21 @@ Through the glass window of the door we can see, far in the background, the judg
 
 From the noise of the corridor we are now in the deathlike stillness of a courtroom. A hand places a freshly-filled pitcher of water on the tray. A pair of hands fills a glass from the pitcher. Camera pans with glass as it is raised. Camera holds on close-up of Judge, drinking the water. He finishes, puts the glass down, and turns to his left again. He clears his throat. Then he begins to speak.
 
-> @JUDGE
->> (Gravely)
->> Pardon me, gentlemen. To continue, you’ve heard a long and complex case. Murder in the first degree ... premeditated homicide ... is the most serious charge tried in our criminal courts.
+@JUDGE
+(Gravely)
+Pardon me, gentlemen. To continue, you’ve heard a long and complex case. Murder in the first degree ... premeditated homicide ... is the most serious charge tried in our criminal courts.
 
 # INT. MEDIUM SHOT - THE JURY - DAY
 
 From the judge's angle. Seated in the jury box, listening intently to the judge. We see the 14 members of the jury. This includes the two alternates who sit on the far right side of the jury, one behind the other. The jury sits in numerical order reading from left to right: the Foreman through #6 in the front row, #7-#12 in the rear row. As the judge speaks, camera dollies slowly in, still holding on jury but excluding the alternates.
 
-> @JUDGE
->> You've listened to the testimony, and you’ve had the law read to you and interpreted as it applies to this case. It now becomes your duty to sit down to try and separate the facts from the fancy. One man is dead. The life of another is at stake. I urge you to deliberate honestly and thoughtfully.
+@JUDGE
+You've listened to the testimony, and you’ve had the law read to you and interpreted as it applies to this case. It now becomes your duty to sit down to try and separate the facts from the fancy. One man is dead. The life of another is at stake. I urge you to deliberate honestly and thoughtfully.
 
 Camera is now in close on #'s [1](Juror #1), [2](Juror #2), [7](Juror #7) and [8](Juror #8). It begins to pan slowly right. [#7](Juror #7) fidgets endlessly. [#10](Juror #10) sniffs as if he has a cold. [#3](Juror #3) looks coldly off in the direction in which the defendant sits. All other jurymen watch the judge, listening intently. As the judge finishes his lines, camera is on #'s [5](Juror #5), [6](Juror #6), [11](Juror #11) and [12](Juror #12).
 
-> @JUDGE
->> If there is a reasonable doubt in your minds as to the guilt of the accused ...a reasonable doubt... then you must bring me a verdict of not guilty. If, however, there is no reasonable doubt, then you must, in good conscience find the accused guilty. However you decide, your verdict must be unanimous. In the event you find the accused guilty the bench will not entertain a recommendation for mercy. The death sentence is mandatory in this case.
+@JUDGE
+If there is a reasonable doubt in your minds as to the guilt of the accused ...a reasonable doubt... then you must bring me a verdict of not guilty. If, however, there is no reasonable doubt, then you must, in good conscience find the accused guilty. However you decide, your verdict must be unanimous. In the event you find the accused guilty the bench will not entertain a recommendation for mercy. The death sentence is mandatory in this case.
 
 The judge pauses for a moment. There is a stillness in the room.
 
@@ -89,22 +89,22 @@ The judge pauses for a moment. There is a stillness in the room.
 
 The judge's profile fills the left side of the frame. In right background, we see the jury box.
 
-> @JUDGE
->> I don’t envy you your job. You are faced with a grave responsibility. Thank you, gentlemen.
+@JUDGE
+I don’t envy you your job. You are faced with a grave responsibility. Thank you, gentlemen.
 
 There is a pause. The judge turns away from the jury and nods in another direction.
 
 ## INT. CLOSE UP THE FACE OF THE COURT CLERK - DAY
 
-> @CLERK
->> The alternate jurors are excused.
+@CLERK
+The alternate jurors are excused.
 
 ## INT. MEDIUM SHOT - THE JURY - DAY
 
 All of their heads turn to camera right. Self-consciously the two alternates rise and move awkwardly out of the jury box. When they are gone, we hear the clerk.
 
-> @CLERK
->> The Jury will retire.
+@CLERK
+The Jury will retire.
 
 The members of the Jury look hesitantly at each other, each reluctant to be the first to stand. Finally [#3](Juror #3) stands up. Then the others begin to rise and file slowly off left until the Jury box is empty. They file through a long corridor, then through one door, then another. They are silent, serious. All we hear is the sound of their footsteps. Credits are superimposed over this scene.
 
@@ -124,17 +124,17 @@ Camera slowly pans with [#7](Juror #7) as he walks across the room toward the wi
 
 There is no conversation for a moment. [#7](Juror #7) reaches the window. Camera is on him and [#6](Juror #6) who looks out at the skyline. [#7](Juror #7) offers a stick of gum to him. He shakes his head. [#7](Juror #7) offers the gum to [#8](Juror #8) who also looks out window. [#8](Juror #8) smiles.
 
-> [#8](Juror #8)
->> No thanks.
+[#8](Juror #8)
+No thanks.
 
-> [#7](Juror #7)
->> (to [#6](Juror #6))
->> Y'know something? I phoned up for the weather this morning. This is the hottest day of the year.
+[#7](Juror #7)
+(to [#6](Juror #6))
+Y'know something? I phoned up for the weather this morning. This is the hottest day of the year.
 
 [#6](Juror #6) nods and continues to look out window.
 
-> [#7](Juror #7)
->> You'd think they’d at least air condition the place. I almost dropped dead in court.
+[#7](Juror #7)
+You'd think they’d at least air condition the place. I almost dropped dead in court.
 
 He reaches over and opens the window wider.
 
@@ -142,56 +142,56 @@ He reaches over and opens the window wider.
 
 He has finished counting them.
 
-> @GUARD
->> Okay, gentlemen. Everybody's here. If there's anything you want I’m right outside. Just knock.
+@GUARD
+Okay, gentlemen. Everybody's here. If there's anything you want I’m right outside. Just knock.
 
 He exits, closing the door as camera dollies back to include [#5](Juror #5), the youngest Juryman, who watches the door. We hear the lock click. [#5](Juror #5) half grins, self-consciously.
 
-> [#5](Juror #5)
->> I never knew they locked the door.
+[#5](Juror #5)
+I never knew they locked the door.
 
-> [#10](Juror #10)
->> Sure they lock the door. What'd you think?
+[#10](Juror #10)
+Sure they lock the door. What'd you think?
 
-> [#5](Juror #5)
->> I don't know. It just never occurred to me.
+[#5](Juror #5)
+I don't know. It just never occurred to me.
 
 [#10](Juror #10) gives him the look of a professional know-it-all, and then turns and takes off his jacket. He walks across room to coat rack, camera dollying with him. He passes the [Foreman](FOREMAN) who stands at the head of the table tearing up little slips of paper for ballots, and he stops.
 
-> [#10](Juror #10)
->> Hey, what's that for?
+[#10](Juror #10)
+Hey, what's that for?
 
-> @FOREMAN
->> Well, I figured we might want to vote by ballots.
+@FOREMAN
+Well, I figured we might want to vote by ballots.
 
-> [#10](Juror #10)
->> (grinning)
->> Great idea! Maybe we can get him elected senator.
+[#10](Juror #10)
+(grinning)
+Great idea! Maybe we can get him elected senator.
 
 [#10](Juror #10) laughs until he begins to cough. He moves off to the coat rack. The [Foreman](FOREMAN) looks at his watch and compares it with the clock. [#3](Juror #3) takes a cup of water from the water-cooler, moves to [#2](Juror #2) and looks around the room as he sips the water.
 
-> [#3](Juror #3)
->> (to [#2](Juror #2))
->> How'd you like it?
+[#3](Juror #3)
+(to [#2](Juror #2))
+How'd you like it?
 
-> [#2](Juror #2)
->> (mildly)
->> I don't know, it was pretty interesting.
+[#2](Juror #2)
+(mildly)
+I don't know, it was pretty interesting.
 
-> [#3](Juror #3)
->> Yeah? I was falling asleep.
+[#3](Juror #3)
+Yeah? I was falling asleep.
 
-> [#2](Juror #2)
->> I mean, I've never been on a jury before.
+[#2](Juror #2)
+I mean, I've never been on a jury before.
 
-> [#3](Juror #3)
->> Really? I've sat on juries, and it always amazes me the way these lawyers can talk, and talk and talk, even when the case is as obvious as this one. I mean, did you ever hear so much talk about nothing?
+[#3](Juror #3)
+Really? I've sat on juries, and it always amazes me the way these lawyers can talk, and talk and talk, even when the case is as obvious as this one. I mean, did you ever hear so much talk about nothing?
 
-> [#2](Juror #2)
->> Well, I guess they're entitled.
+[#2](Juror #2)
+Well, I guess they're entitled.
 
-> [#3](Juror #3)
->> Sure they are. Everybody deserves a fair trial. That's the system. Listen, I'm the last one to say anything against it, but I'm telling you sometimes I think we'd be better off if we took these tough kids and slapped 'em down before they make trouble, you know? Save us a lot of time and money.
+[#3](Juror #3)
+Sure they are. Everybody deserves a fair trial. That's the system. Listen, I'm the last one to say anything against it, but I'm telling you sometimes I think we'd be better off if we took these tough kids and slapped 'em down before they make trouble, you know? Save us a lot of time and money.
 
 [#2](Juror #2) looks at him nervously, nods, gets up and walks to the water cooler, camera dollying with him. He pours himself a drink and stands alone sipping it. We hear movement in the room during all of this, and quiet ad lib conversation.
 
