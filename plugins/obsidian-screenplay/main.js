@@ -400,6 +400,47 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
             }
           }
         }
+        el.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((headerEl) => {
+          headerEl.classList.add("cm-mdsp-scene-heading");
+        });
+        el.querySelectorAll("blockquote").forEach((bqEl) => {
+          let depth = 0;
+          let current = bqEl;
+          while (current && current !== el) {
+            if (current.nodeName.toLowerCase() === "blockquote") {
+              depth++;
+            }
+            current = current.parentElement;
+          }
+          if (depth === 1) {
+            bqEl.classList.add("cm-mdsp-dialog-heading");
+          } else if (depth >= 2) {
+            const text = bqEl.textContent?.trim() || "";
+            if (text.startsWith("(")) {
+              bqEl.classList.add("cm-mdsp-dialog-parenthetical");
+            } else {
+              bqEl.classList.add("cm-mdsp-dialog");
+            }
+          }
+        });
+        el.querySelectorAll("p").forEach((pEl) => {
+          if (pEl.closest("blockquote")) {
+            return;
+          }
+          const text = pEl.textContent?.trim() || "";
+          if (text.startsWith(":")) {
+            pEl.classList.add("cm-mdsp-scene-transition");
+            const firstChild = pEl.firstChild;
+            if (firstChild && firstChild.nodeType === Node.TEXT_NODE) {
+              const val = firstChild.nodeValue || "";
+              if (val.trimStart().startsWith(":")) {
+                firstChild.nodeValue = val.trimStart().slice(1).trimStart();
+              }
+            }
+          } else {
+            pEl.classList.add("cm-mdsp-action");
+          }
+        });
         logDebug(this.app, `Parsed Reading View YAML colors count: ${colors.size}`);
         if (colors.size === 0)
           return;

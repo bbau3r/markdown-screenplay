@@ -1,7 +1,9 @@
 /* Screenplay MDSP Plugin Styles */
 
 /* Enforce monospace font for the screenplay container */
-.mdsp-enabled .cm-content {
+.mdsp-enabled .cm-content,
+.mdsp-enabled .markdown-preview-view,
+.mdsp-enabled .markdown-rendered {
   font-family: "Courier Prime", "Courier New", Courier, monospace !important;
   font-size: 17px !important;
   line-height: 1.5 !important;

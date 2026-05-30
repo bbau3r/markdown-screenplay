@@ -6,7 +6,7 @@ function logDebug(app: App, msg: string) {
   try {
     const timestamp = new Date().toISOString();
     app.vault.adapter.append("screenplay-debug.log", `[${timestamp}] ${msg}\n`);
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function cleanBOM(str: string): string {
@@ -20,15 +20,15 @@ function cleanBOM(str: string): string {
 function parseCharactersFromDoc(doc: Text): Map<string, string> {
   const colors = new Map<string, string>();
   if (doc.length === 0) return colors;
-  
+
   try {
     const firstLine = cleanBOM(doc.line(1).text.trim());
     if (firstLine !== "---") return colors;
-    
+
     let inCharacters = false;
     let currentCharacterName = "";
     let currentCharacterColor = "";
-    
+
     const commitCharacter = (name: string, color: string) => {
       const cleanName = name.trim().replace(/^['"]|['"]$/g, '').toLowerCase();
       const cleanColor = color.trim().replace(/^['"]|['"]$/g, '');
@@ -40,40 +40,40 @@ function parseCharactersFromDoc(doc: Text): Map<string, string> {
     for (let i = 2; i <= doc.lines; i++) {
       const line = doc.line(i).text;
       const trimmed = line.trim();
-      
+
       if (trimmed === "---") {
         break;
       }
       if (i > 200) {
         break;
       }
-      
+
       if (/^characters\s*:/i.test(trimmed)) {
         inCharacters = true;
         continue;
       }
-      
+
       if (inCharacters) {
         if (/^[a-zA-Z0-9_-]+\s*:/i.test(line)) {
           inCharacters = false;
           commitCharacter(currentCharacterName, currentCharacterColor);
           continue;
         }
-        
+
         const isListItem = line.trimStart().startsWith("-");
         if (isListItem) {
           commitCharacter(currentCharacterName, currentCharacterColor);
           currentCharacterName = "";
           currentCharacterColor = "";
-          
+
           const listContent = line.trimStart().slice(1).trim();
-          
+
           const nameMatch = listContent.match(/^name\s*:\s*(.+)$/i);
           if (nameMatch) {
             currentCharacterName = nameMatch[1];
             continue;
           }
-          
+
           const keyValMatch = listContent.match(/^([^:]+)\s*:\s*(.*)$/);
           if (keyValMatch) {
             const key = keyValMatch[1].trim();
@@ -85,7 +85,7 @@ function parseCharactersFromDoc(doc: Text): Map<string, string> {
             }
             continue;
           }
-          
+
           currentCharacterName = listContent;
         } else {
           const colorMatch = trimmed.match(/^color\s*:\s*(.+)$/i);
@@ -94,14 +94,14 @@ function parseCharactersFromDoc(doc: Text): Map<string, string> {
             commitCharacter(currentCharacterName, currentCharacterColor);
             continue;
           }
-          
+
           const nameMatch = trimmed.match(/^name\s*:\s*(.+)$/i);
           if (nameMatch) {
             currentCharacterName = nameMatch[1];
             commitCharacter(currentCharacterName, currentCharacterColor);
             continue;
           }
-          
+
           const mapKeyMatch = trimmed.match(/^([^:]+)\s*:$/);
           if (mapKeyMatch) {
             commitCharacter(currentCharacterName, currentCharacterColor);
@@ -112,12 +112,12 @@ function parseCharactersFromDoc(doc: Text): Map<string, string> {
         }
       }
     }
-    
+
     commitCharacter(currentCharacterName, currentCharacterColor);
   } catch (e) {
     console.error("Error parsing mdsp frontmatter: ", e);
   }
-  
+
   return colors;
 }
 
@@ -127,7 +127,7 @@ function getEndFrontmatterLine(doc: Text): number {
   try {
     const firstLine = cleanBOM(doc.line(1).text.trim());
     if (firstLine !== "---") return -1;
-    
+
     for (let i = 2; i <= doc.lines; i++) {
       if (doc.line(i).text.trim() === "---") {
         return i;
@@ -147,9 +147,9 @@ function getCharactersBlockRange(doc: Text): { start: number, end: number } {
   try {
     const firstLine = cleanBOM(doc.line(1).text.trim());
     if (firstLine !== "---") return { start, end };
-    
+
     let inCharacters = false;
-    
+
     for (let i = 2; i <= doc.lines; i++) {
       const line = doc.line(i).text;
       const trimmed = line.trim();
@@ -160,13 +160,13 @@ function getCharactersBlockRange(doc: Text): { start: number, end: number } {
         break;
       }
       if (i > 200) break;
-      
+
       if (/^characters\s*:/i.test(trimmed)) {
         start = i + 1;
         inCharacters = true;
         continue;
       }
-      
+
       if (inCharacters) {
         if (/^[a-zA-Z0-9_-]+\s*:/i.test(line)) {
           end = i - 1;
@@ -174,7 +174,7 @@ function getCharactersBlockRange(doc: Text): { start: number, end: number } {
         }
       }
     }
-    
+
     if (inCharacters && end === -1) {
       for (let i = 2; i <= doc.lines; i++) {
         if (doc.line(i).text.trim() === "---") {
@@ -183,8 +183,8 @@ function getCharactersBlockRange(doc: Text): { start: number, end: number } {
         }
       }
     }
-  } catch (e) {}
-  
+  } catch (e) { }
+
   return { start, end };
 }
 
@@ -214,7 +214,7 @@ function isPosInCharacterMatch(pos: number, doc: Text, colors: Map<string, strin
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { }
   return false;
 }
 
@@ -238,7 +238,7 @@ class ColorBubbleWidget extends WidgetType {
     bubble.style.borderRadius = "50%";
     bubble.style.marginRight = "6px";
     bubble.style.verticalAlign = "middle";
-    
+
     if (this.color) {
       bubble.style.backgroundColor = this.color;
       bubble.style.border = "1px solid rgba(0, 0, 0, 0.15)";
@@ -255,7 +255,7 @@ class ColorBubbleWidget extends WidgetType {
     // Create a hidden input of type color
     const colorInput = document.createElement("input");
     colorInput.type = "color";
-    
+
     let hex6 = "#808080";
     if (this.color && this.color.startsWith("#")) {
       if (this.color.length === 9) {
@@ -282,7 +282,7 @@ class ColorBubbleWidget extends WidgetType {
     colorInput.addEventListener("change", (e) => {
       e.stopPropagation();
       const newColor6 = colorInput.value;
-      
+
       let finalColor = newColor6;
       if (this.color && this.color.startsWith("#") && this.color.length === 9) {
         const alpha = this.color.slice(7, 9);
@@ -296,7 +296,7 @@ class ColorBubbleWidget extends WidgetType {
         if (pos !== null) {
           const line = this.view.state.doc.lineAt(pos);
           const text = line.text;
-          
+
           const colorRegex = /#([a-fA-F0-9]{3,8})/i;
           const match = text.match(colorRegex);
           if (match && match.index !== undefined) {
@@ -421,6 +421,53 @@ export default class ScreenplayPlugin extends Plugin {
           }
         }
 
+        // Classify screenplay layout elements in Reading View
+        el.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((headerEl) => {
+          headerEl.classList.add("cm-mdsp-scene-heading");
+        });
+
+        el.querySelectorAll("blockquote").forEach((bqEl) => {
+          let depth = 0;
+          let current: HTMLElement | null = bqEl;
+          while (current && current !== el) {
+            if (current.nodeName.toLowerCase() === "blockquote") {
+              depth++;
+            }
+            current = current.parentElement;
+          }
+
+          if (depth === 1) {
+            bqEl.classList.add("cm-mdsp-dialog-heading");
+          } else if (depth >= 2) {
+            const text = bqEl.textContent?.trim() || "";
+            if (text.startsWith("(")) {
+              bqEl.classList.add("cm-mdsp-dialog-parenthetical");
+            } else {
+              bqEl.classList.add("cm-mdsp-dialog");
+            }
+          }
+        });
+
+        el.querySelectorAll("p").forEach((pEl) => {
+          if (pEl.closest("blockquote")) {
+            return;
+          }
+
+          const text = pEl.textContent?.trim() || "";
+          if (text.startsWith(":")) {
+            pEl.classList.add("cm-mdsp-scene-transition");
+            const firstChild = pEl.firstChild;
+            if (firstChild && firstChild.nodeType === Node.TEXT_NODE) {
+              const val = firstChild.nodeValue || "";
+              if (val.trimStart().startsWith(":")) {
+                firstChild.nodeValue = val.trimStart().slice(1).trimStart();
+              }
+            }
+          } else {
+            pEl.classList.add("cm-mdsp-action");
+          }
+        });
+
         logDebug(this.app, `Parsed Reading View YAML colors count: ${colors.size}`);
         if (colors.size === 0) return;
 
@@ -527,12 +574,12 @@ export default class ScreenplayPlugin extends Plugin {
 
   isScreenplayFile(file: TFile | null): boolean {
     if (!file) return false;
-    
+
     // 1. Check file extensions
     if (file.extension === "mdsp" || file.name.endsWith(".mdsp.md")) {
       return true;
     }
-    
+
     // 2. Check frontmatter properties
     const cache = this.app.metadataCache.getFileCache(file);
     const frontmatter = cache?.frontmatter;
@@ -548,7 +595,7 @@ export default class ScreenplayPlugin extends Plugin {
         return true;
       }
     }
-    
+
     return false;
   }
 
@@ -559,7 +606,7 @@ export default class ScreenplayPlugin extends Plugin {
       if (view instanceof MarkdownView) {
         const file = view.file;
         const enabled = this.isScreenplayFile(file);
-        
+
         const containerEl = view.contentEl;
         if (enabled) {
           containerEl.classList.add("mdsp-enabled");
@@ -572,7 +619,7 @@ export default class ScreenplayPlugin extends Plugin {
 
   buildEditorExtension() {
     const pluginInstance = this;
-    
+
     return [
       ViewPlugin.fromClass(
         class {
@@ -593,7 +640,7 @@ export default class ScreenplayPlugin extends Plugin {
             try {
               // 1. Resolve current file and check active state
               const activeFile = pluginInstance.app.workspace.getActiveFile();
-              
+
               // Instant check: read document state directly to see if a "characters:" property section exists.
               // This enables instant highlighting when editing without waiting for the Obsidian metadata cache to refresh.
               let hasCharactersBlock = false;
@@ -609,7 +656,7 @@ export default class ScreenplayPlugin extends Plugin {
                     }
                   }
                 }
-              } catch (e) {}
+              } catch (e) { }
 
               const isMdsp = pluginInstance.isScreenplayFile(activeFile) || hasCharactersBlock;
               if (!isMdsp) {
@@ -625,156 +672,72 @@ export default class ScreenplayPlugin extends Plugin {
 
               const builder = new RangeSetBuilder<Decoration>();
 
-            // 3. Walk visible ranges
-            for (const { from, to } of view.visibleRanges) {
-              const startLine = view.state.doc.lineAt(from).number;
-              const endLine = view.state.doc.lineAt(to).number;
+              // 3. Walk visible ranges
+              for (const { from, to } of view.visibleRanges) {
+                const startLine = view.state.doc.lineAt(from).number;
+                const endLine = view.state.doc.lineAt(to).number;
 
-              for (let l = startLine; l <= endLine; l++) {
-                const line = view.state.doc.line(l);
-                const text = line.text;
+                for (let l = startLine; l <= endLine; l++) {
+                  const line = view.state.doc.line(l);
+                  const text = line.text;
 
-                // Style the frontmatter lines as properties
-                if (endFrontmatterLine !== -1 && l >= 1 && l <= endFrontmatterLine) {
-                  let lineClass = "";
-                  if (l === 1 || l === endFrontmatterLine) {
-                    lineClass = "cm-mdsp-property-divider";
-                  } else {
-                    lineClass = "cm-mdsp-property-line";
-                  }
-
-                  builder.add(
-                    line.from,
-                    line.from,
-                    Decoration.line({
-                      attributes: { class: lineClass }
-                    })
-                  );
-
-                  const isLineInCharacters = charRange.start !== -1 && charRange.end !== -1 && l >= charRange.start && l <= charRange.end;
-                  const isCursorOnLine = view.state.selection.ranges.some(
-                    r => r.from >= line.from && r.to <= line.to
-                  );
-
-                  if (isLineInCharacters) {
-                    const colorMatch = text.match(/#([a-fA-F0-9]{3,8})/);
-
-                    // Case 1: List item with color: `- '#FF2E2E7D' KAYAK KILLER`
-                    const charListMatch = text.match(/^(\s*-\s*)(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s+(.+)$/);
-                    if (charListMatch) {
-                      const prefixLen = charListMatch[1].length;
-                      const colorLen = charListMatch[2].length;
-
-                      if (!isCursorOnLine) {
-                        // Hide "- " and the hex color value
-                        builder.add(
-                          line.from,
-                          line.from + prefixLen + colorLen + 1,
-                          Decoration.mark({
-                            class: "cm-mdsp-syntax-hidden"
-                          })
-                        );
-                      }
-
-                      if (colorMatch) {
-                        const color = colorMatch[0];
-                        // Render bubble widget at the start of the character name
-                        builder.add(
-                          line.from + prefixLen + colorLen + 1,
-                          line.from + prefixLen + colorLen + 1,
-                          Decoration.widget({
-                            widget: new ColorBubbleWidget(color, view),
-                            side: -1
-                          })
-                        );
-                      }
-
-                      builder.add(
-                        line.from + prefixLen + colorLen + 1,
-                        line.to,
-                        Decoration.mark({
-                          class: "cm-mdsp-property-value"
-                        })
-                      );
-                      continue;
+                  // Style the frontmatter lines as properties
+                  if (endFrontmatterLine !== -1 && l >= 1 && l <= endFrontmatterLine) {
+                    let lineClass = "";
+                    if (l === 1 || l === endFrontmatterLine) {
+                      lineClass = "cm-mdsp-property-divider";
+                    } else {
+                      lineClass = "cm-mdsp-property-line";
                     }
 
-                    // Case 2: Map entry with color: `KAYAK KILLER: '#FF2E2E7D'`
-                    const charMapMatch = text.match(/^(\s*)([^:]+)\s*:\s*(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s*$/);
-                    if (charMapMatch) {
-                      const prefixLen = charMapMatch[1].length;
-                      const keyLen = charMapMatch[2].length;
+                    builder.add(
+                      line.from,
+                      line.from,
+                      Decoration.line({
+                        attributes: { class: lineClass }
+                      })
+                    );
 
-                      if (colorMatch) {
-                        const color = colorMatch[0];
-                        builder.add(
-                          line.from + prefixLen,
-                          line.from + prefixLen,
-                          Decoration.widget({
-                            widget: new ColorBubbleWidget(color, view),
-                            side: -1
-                          })
-                        );
-                      }
+                    const isLineInCharacters = charRange.start !== -1 && charRange.end !== -1 && l >= charRange.start && l <= charRange.end;
+                    const isCursorOnLine = view.state.selection.ranges.some(
+                      r => r.from >= line.from && r.to <= line.to
+                    );
 
-                      builder.add(
-                        line.from + prefixLen,
-                        line.from + prefixLen + keyLen,
-                        Decoration.mark({
-                          class: "cm-mdsp-property-value"
-                        })
-                      );
+                    if (isLineInCharacters) {
+                      const colorMatch = text.match(/#([a-fA-F0-9]{3,8})/);
 
-                      const colonIndex = text.indexOf(":");
-                      if (!isCursorOnLine) {
-                        builder.add(
-                          line.from + colonIndex,
-                          line.to,
-                          Decoration.mark({
-                            class: "cm-mdsp-syntax-hidden"
-                          })
-                        );
-                      } else {
-                        builder.add(
-                          line.from + colonIndex + 1,
-                          line.to,
-                          Decoration.mark({
-                            class: "cm-mdsp-property-key"
-                          })
-                        );
-                      }
-                      continue;
-                    }
+                      // Case 1: List item with color: `- '#FF2E2E7D' KAYAK KILLER`
+                      const charListMatch = text.match(/^(\s*-\s*)(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s+(.+)$/);
+                      if (charListMatch) {
+                        const prefixLen = charListMatch[1].length;
+                        const colorLen = charListMatch[2].length;
 
-                    // Case 3: List item WITHOUT color: `- KAYAK KILLER`
-                    const charListNoColorMatch = text.match(/^(\s*-\s*)(.+)$/);
-                    if (charListNoColorMatch) {
-                      const prefixLen = charListNoColorMatch[1].length;
-                      const name = charListNoColorMatch[2].trim();
-
-                      if (name && name !== "---") {
                         if (!isCursorOnLine) {
+                          // Hide "- " and the hex color value
                           builder.add(
                             line.from,
-                            line.from + prefixLen,
+                            line.from + prefixLen + colorLen + 1,
                             Decoration.mark({
                               class: "cm-mdsp-syntax-hidden"
                             })
                           );
                         }
 
-                        // Render placeholder bubble widget at the start of the character name
-                        builder.add(
-                          line.from + prefixLen,
-                          line.from + prefixLen,
-                          Decoration.widget({
-                            widget: new ColorBubbleWidget("", view),
-                            side: -1
-                          })
-                        );
+                        if (colorMatch) {
+                          const color = colorMatch[0];
+                          // Render bubble widget at the start of the character name
+                          builder.add(
+                            line.from + prefixLen + colorLen + 1,
+                            line.from + prefixLen + colorLen + 1,
+                            Decoration.widget({
+                              widget: new ColorBubbleWidget(color, view),
+                              side: -1
+                            })
+                          );
+                        }
 
                         builder.add(
-                          line.from + prefixLen,
+                          line.from + prefixLen + colorLen + 1,
                           line.to,
                           Decoration.mark({
                             class: "cm-mdsp-property-value"
@@ -782,24 +745,24 @@ export default class ScreenplayPlugin extends Plugin {
                         );
                         continue;
                       }
-                    }
 
-                    // Case 4: Map entry WITHOUT color: `KAYAK KILLER:`
-                    const charMapNoColorMatch = text.match(/^(\s*)([^:]+)\s*:\s*$/);
-                    if (charMapNoColorMatch) {
-                      const prefixLen = charMapNoColorMatch[1].length;
-                      const keyLen = charMapNoColorMatch[2].length;
-                      const name = charMapNoColorMatch[2].trim();
+                      // Case 2: Map entry with color: `KAYAK KILLER: '#FF2E2E7D'`
+                      const charMapMatch = text.match(/^(\s*)([^:]+)\s*:\s*(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s*$/);
+                      if (charMapMatch) {
+                        const prefixLen = charMapMatch[1].length;
+                        const keyLen = charMapMatch[2].length;
 
-                      if (name && name !== "characters" && name !== "---") {
-                        builder.add(
-                          line.from + prefixLen,
-                          line.from + prefixLen,
-                          Decoration.widget({
-                            widget: new ColorBubbleWidget("", view),
-                            side: -1
-                          })
-                        );
+                        if (colorMatch) {
+                          const color = colorMatch[0];
+                          builder.add(
+                            line.from + prefixLen,
+                            line.from + prefixLen,
+                            Decoration.widget({
+                              widget: new ColorBubbleWidget(color, view),
+                              side: -1
+                            })
+                          );
+                        }
 
                         builder.add(
                           line.from + prefixLen,
@@ -818,210 +781,294 @@ export default class ScreenplayPlugin extends Plugin {
                               class: "cm-mdsp-syntax-hidden"
                             })
                           );
+                        } else {
+                          builder.add(
+                            line.from + colonIndex + 1,
+                            line.to,
+                            Decoration.mark({
+                              class: "cm-mdsp-property-key"
+                            })
+                          );
                         }
                         continue;
+                      }
+
+                      // Case 3: List item WITHOUT color: `- KAYAK KILLER`
+                      const charListNoColorMatch = text.match(/^(\s*-\s*)(.+)$/);
+                      if (charListNoColorMatch) {
+                        const prefixLen = charListNoColorMatch[1].length;
+                        const name = charListNoColorMatch[2].trim();
+
+                        if (name && name !== "---") {
+                          if (!isCursorOnLine) {
+                            builder.add(
+                              line.from,
+                              line.from + prefixLen,
+                              Decoration.mark({
+                                class: "cm-mdsp-syntax-hidden"
+                              })
+                            );
+                          }
+
+                          // Render placeholder bubble widget at the start of the character name
+                          builder.add(
+                            line.from + prefixLen,
+                            line.from + prefixLen,
+                            Decoration.widget({
+                              widget: new ColorBubbleWidget("", view),
+                              side: -1
+                            })
+                          );
+
+                          builder.add(
+                            line.from + prefixLen,
+                            line.to,
+                            Decoration.mark({
+                              class: "cm-mdsp-property-value"
+                            })
+                          );
+                          continue;
+                        }
+                      }
+
+                      // Case 4: Map entry WITHOUT color: `KAYAK KILLER:`
+                      const charMapNoColorMatch = text.match(/^(\s*)([^:]+)\s*:\s*$/);
+                      if (charMapNoColorMatch) {
+                        const prefixLen = charMapNoColorMatch[1].length;
+                        const keyLen = charMapNoColorMatch[2].length;
+                        const name = charMapNoColorMatch[2].trim();
+
+                        if (name && name !== "characters" && name !== "---") {
+                          builder.add(
+                            line.from + prefixLen,
+                            line.from + prefixLen,
+                            Decoration.widget({
+                              widget: new ColorBubbleWidget("", view),
+                              side: -1
+                            })
+                          );
+
+                          builder.add(
+                            line.from + prefixLen,
+                            line.from + prefixLen + keyLen,
+                            Decoration.mark({
+                              class: "cm-mdsp-property-value"
+                            })
+                          );
+
+                          const colonIndex = text.indexOf(":");
+                          if (!isCursorOnLine) {
+                            builder.add(
+                              line.from + colonIndex,
+                              line.to,
+                              Decoration.mark({
+                                class: "cm-mdsp-syntax-hidden"
+                              })
+                            );
+                          }
+                          continue;
+                        }
+                      }
+                    }
+
+                    // Fallback for standard properties highlighting (key-value pairs)
+                    const keyValMatch = text.match(/^(\s*-?\s*)([a-zA-Z0-9_-]+)\s*:(.*)$/);
+                    if (keyValMatch) {
+                      const prefixLen = keyValMatch[1].length;
+                      const keyLen = keyValMatch[2].length;
+
+                      builder.add(
+                        line.from + prefixLen,
+                        line.from + prefixLen + keyLen + 1,
+                        Decoration.mark({
+                          class: "cm-mdsp-property-key"
+                        })
+                      );
+
+                      if (keyValMatch[3].trim().length > 0) {
+                        builder.add(
+                          line.from + prefixLen + keyLen + 1,
+                          line.to,
+                          Decoration.mark({
+                            class: "cm-mdsp-property-value"
+                          })
+                        );
+                      }
+                    } else {
+                      const listItemMatch = text.match(/^(\s*-\s*)(.+)$/);
+                      if (listItemMatch) {
+                        const prefixLen = listItemMatch[1].length;
+                        builder.add(
+                          line.from + prefixLen,
+                          line.to,
+                          Decoration.mark({
+                            class: "cm-mdsp-property-value"
+                          })
+                        );
+                      }
+                    }
+                    continue;
+                  }
+
+                  // Style the screenplay lines
+                  let lineClass = "";
+                  if (text.startsWith("##")) {
+                    lineClass = "cm-mdsp-scene-heading-sub";
+                  } else if (text.startsWith("#")) {
+                    lineClass = "cm-mdsp-scene-heading";
+                  } else if (text.startsWith(":")) {
+                    lineClass = "cm-mdsp-scene-transition";
+                  } else if (text.startsWith(">>")) {
+                    const trimmed = text.slice(2).trim();
+                    if (trimmed.startsWith("(")) {
+                      lineClass = "cm-mdsp-dialog-parenthetical";
+                    } else {
+                      lineClass = "cm-mdsp-dialog";
+                    }
+                  } else if (text.startsWith(">")) {
+                    lineClass = "cm-mdsp-dialog-heading";
+                  } else if (text.trim().length > 0) {
+                    lineClass = "cm-mdsp-action";
+                  }
+
+                  if (lineClass) {
+                    builder.add(
+                      line.from,
+                      line.from,
+                      Decoration.line({
+                        attributes: { class: lineClass }
+                      })
+                    );
+
+                    // Check if cursor is on this line to dynamically hide prefix formatting characters
+                    const isCursorOnLine = view.state.selection.ranges.some(
+                      r => r.from >= line.from && r.to <= line.to
+                    );
+
+                    if (!isCursorOnLine) {
+                      let hideLen = 0;
+                      if (text.startsWith("## ")) hideLen = 3;
+                      else if (text.startsWith("##")) hideLen = 2;
+                      else if (text.startsWith("# ")) hideLen = 2;
+                      else if (text.startsWith("#")) hideLen = 1;
+                      else if (text.startsWith(">> ")) hideLen = 3;
+                      else if (text.startsWith(">>")) hideLen = 2;
+                      else if (text.startsWith("> ")) hideLen = 2;
+                      else if (text.startsWith(">")) hideLen = 1;
+                      else if (text.startsWith(": ")) hideLen = 2;
+                      else if (text.startsWith(":")) hideLen = 1;
+
+                      if (hideLen > 0) {
+                        builder.add(
+                          line.from,
+                          line.from + hideLen,
+                          Decoration.mark({
+                            class: "cm-mdsp-syntax-hidden"
+                          })
+                        );
                       }
                     }
                   }
 
-                  // Fallback for standard properties highlighting (key-value pairs)
-                  const keyValMatch = text.match(/^(\s*-?\s*)([a-zA-Z0-9_-]+)\s*:(.*)$/);
-                  if (keyValMatch) {
-                    const prefixLen = keyValMatch[1].length;
-                    const keyLen = keyValMatch[2].length;
+                  // Highlight character references and handle syntax hiding
+                  const regex = /@\(([^)]+)\)|@(\w+)|\[([^\]]+)\]\(([^)]+)\)/g;
+                  let match;
+                  while ((match = regex.exec(text)) !== null) {
+                    const fullMatch = match[0];
+                    const matchStart = line.from + match.index;
+                    const matchEnd = matchStart + fullMatch.length;
 
-                    builder.add(
-                      line.from + prefixLen,
-                      line.from + prefixLen + keyLen + 1,
-                      Decoration.mark({
-                        class: "cm-mdsp-property-key"
-                      })
-                    );
+                    let characterName = "";
+                    let prefixLen = 0;
+                    let suffixLen = 0;
 
-                    if (keyValMatch[3].trim().length > 0) {
-                      builder.add(
-                        line.from + prefixLen + keyLen + 1,
-                        line.to,
-                        Decoration.mark({
-                          class: "cm-mdsp-property-value"
-                        })
-                      );
+                    if (match[1]) {
+                      // @(character name)
+                      characterName = match[1];
+                      prefixLen = 2; // "@("
+                      suffixLen = 1; // ")"
+                    } else if (match[2]) {
+                      // @character
+                      characterName = match[2];
+                      prefixLen = 1; // "@"
+                      suffixLen = 0;
+                    } else if (match[4]) {
+                      // [alias](character name)
+                      const alias = match[3];
+                      characterName = match[4];
+                      prefixLen = 1; // "["
+                      suffixLen = fullMatch.length - prefixLen - alias.length; // "](name)"
                     }
-                  } else {
-                    const listItemMatch = text.match(/^(\s*-\s*)(.+)$/);
-                    if (listItemMatch) {
-                      const prefixLen = listItemMatch[1].length;
-                      builder.add(
-                        line.from + prefixLen,
-                        line.to,
-                        Decoration.mark({
-                          class: "cm-mdsp-property-value"
-                        })
-                      );
-                    }
-                  }
-                  continue;
-                }
 
-                // Style the screenplay lines
-                let lineClass = "";
-                if (text.startsWith("##")) {
-                  lineClass = "cm-mdsp-scene-heading-sub";
-                } else if (text.startsWith("#")) {
-                  lineClass = "cm-mdsp-scene-heading";
-                } else if (text.startsWith(":")) {
-                  lineClass = "cm-mdsp-scene-transition";
-                } else if (text.startsWith(">>")) {
-                  const trimmed = text.slice(2).trim();
-                  if (trimmed.startsWith("(")) {
-                    lineClass = "cm-mdsp-dialog-parenthetical";
-                  } else {
-                    lineClass = "cm-mdsp-dialog";
-                  }
-                } else if (text.startsWith(">")) {
-                  lineClass = "cm-mdsp-dialog-heading";
-                } else if (text.trim().length > 0) {
-                  lineClass = "cm-mdsp-action";
-                }
+                    if (characterName) {
+                      const lowerName = characterName.trim().toLowerCase();
+                      const color = colors.get(lowerName);
+                      if (color) {
+                        // Determine if cursor is on this specific character match range
+                        const isCursorOnMatch = view.state.selection.ranges.some(
+                          r => r.from <= matchEnd && r.to >= matchStart
+                        );
 
-                if (lineClass) {
-                  builder.add(
-                    line.from,
-                    line.from,
-                    Decoration.line({
-                      attributes: { class: lineClass }
-                    })
-                  );
+                        // Only highlight and hide syntax if the cursor is NOT on the match range (i.e. editing is not active)
+                        if (!isCursorOnMatch) {
+                          // 1. Hide formatting brackets/parentheses prefix
+                          if (prefixLen > 0) {
+                            builder.add(
+                              matchStart,
+                              matchStart + prefixLen,
+                              Decoration.mark({
+                                class: "cm-mdsp-syntax-hidden"
+                              })
+                            );
+                          }
 
-                  // Check if cursor is on this line to dynamically hide prefix formatting characters
-                  const isCursorOnLine = view.state.selection.ranges.some(
-                    r => r.from >= line.from && r.to <= line.to
-                  );
+                          // 2. Highlight ONLY the visible name/alias part
+                          builder.add(
+                            matchStart + prefixLen,
+                            matchEnd - suffixLen,
+                            Decoration.mark({
+                              attributes: {
+                                style: `background-color: ${color};`
+                              },
+                              class: "cm-mdsp-character-highlight"
+                            })
+                          );
 
-                  if (!isCursorOnLine) {
-                    let hideLen = 0;
-                    if (text.startsWith("## ")) hideLen = 3;
-                    else if (text.startsWith("##")) hideLen = 2;
-                    else if (text.startsWith("# ")) hideLen = 2;
-                    else if (text.startsWith("#")) hideLen = 1;
-                    else if (text.startsWith(">> ")) hideLen = 3;
-                    else if (text.startsWith(">>")) hideLen = 2;
-                    else if (text.startsWith("> ")) hideLen = 2;
-                    else if (text.startsWith(">")) hideLen = 1;
-                    else if (text.startsWith(": ")) hideLen = 2;
-                    else if (text.startsWith(":")) hideLen = 1;
-
-                    if (hideLen > 0) {
-                      builder.add(
-                        line.from,
-                        line.from + hideLen,
-                        Decoration.mark({
-                          class: "cm-mdsp-syntax-hidden"
-                        })
-                      );
-                    }
-                  }
-                }
-
-                // Highlight character references and handle syntax hiding
-                const regex = /@\(([^)]+)\)|@(\w+)|\[([^\]]+)\]\(([^)]+)\)/g;
-                let match;
-                while ((match = regex.exec(text)) !== null) {
-                  const fullMatch = match[0];
-                  const matchStart = line.from + match.index;
-                  const matchEnd = matchStart + fullMatch.length;
-
-                  let characterName = "";
-                  let prefixLen = 0;
-                  let suffixLen = 0;
-
-                  if (match[1]) {
-                    // @(character name)
-                    characterName = match[1];
-                    prefixLen = 2; // "@("
-                    suffixLen = 1; // ")"
-                  } else if (match[2]) {
-                    // @character
-                    characterName = match[2];
-                    prefixLen = 1; // "@"
-                    suffixLen = 0;
-                  } else if (match[4]) {
-                    // [alias](character name)
-                    const alias = match[3];
-                    characterName = match[4];
-                    prefixLen = 1; // "["
-                    suffixLen = fullMatch.length - prefixLen - alias.length; // "](name)"
-                  }
-
-                  if (characterName) {
-                    const lowerName = characterName.trim().toLowerCase();
-                    const color = colors.get(lowerName);
-                    if (color) {
-                      // Determine if cursor is on this specific character match range
-                      const isCursorOnMatch = view.state.selection.ranges.some(
-                        r => r.from <= matchEnd && r.to >= matchStart
-                      );
-
-                      // Only highlight and hide syntax if the cursor is NOT on the match range (i.e. editing is not active)
-                      if (!isCursorOnMatch) {
-                        // 1. Hide formatting brackets/parentheses prefix
-                        if (prefixLen > 0) {
+                          // 3. Hide formatting brackets/parentheses suffix
+                          if (suffixLen > 0) {
+                            builder.add(
+                              matchEnd - suffixLen,
+                              matchEnd,
+                              Decoration.mark({
+                                class: "cm-mdsp-syntax-hidden"
+                              })
+                            );
+                          }
+                        } else {
+                          // Apply active class to prevent Obsidian link styles/clicks even during editing
                           builder.add(
                             matchStart,
-                            matchStart + prefixLen,
-                            Decoration.mark({
-                              class: "cm-mdsp-syntax-hidden"
-                            })
-                          );
-                        }
-
-                        // 2. Highlight ONLY the visible name/alias part
-                        builder.add(
-                          matchStart + prefixLen,
-                          matchEnd - suffixLen,
-                          Decoration.mark({
-                            attributes: {
-                              style: `background-color: ${color};`
-                            },
-                            class: "cm-mdsp-character-highlight"
-                          })
-                        );
-
-                        // 3. Hide formatting brackets/parentheses suffix
-                        if (suffixLen > 0) {
-                          builder.add(
-                            matchEnd - suffixLen,
                             matchEnd,
                             Decoration.mark({
-                              class: "cm-mdsp-syntax-hidden"
+                              class: "cm-mdsp-character-active"
                             })
                           );
                         }
-                      } else {
-                        // Apply active class to prevent Obsidian link styles/clicks even during editing
-                        builder.add(
-                          matchStart,
-                          matchEnd,
-                          Decoration.mark({
-                            class: "cm-mdsp-character-active"
-                          })
-                        );
                       }
                     }
                   }
                 }
               }
-            }
 
-            const result = builder.finish();
-            logDebug(pluginInstance.app, `buildDecorations finished successfully with size=${result.size}`);
-            return result;
-          } catch (err: any) {
-            logDebug(pluginInstance.app, `ERROR in buildDecorations: ${err.message}\nStack: ${err.stack}`);
-            return Decoration.none;
+              const result = builder.finish();
+              logDebug(pluginInstance.app, `buildDecorations finished successfully with size=${result.size}`);
+              return result;
+            } catch (err: any) {
+              logDebug(pluginInstance.app, `ERROR in buildDecorations: ${err.message}\nStack: ${err.stack}`);
+              return Decoration.none;
+            }
           }
-        }
-      },
+        },
         {
           decorations: (v) => v.decorations,
         }
