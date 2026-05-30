@@ -155,7 +155,11 @@ function skipNonContentLines(
 function stripPrefixFromLineElement(lineEl: HTMLElement, type: string): void {
   const firstChild = lineEl.firstChild;
   if (firstChild && firstChild.nodeType === Node.TEXT_NODE) {
-    const val = firstChild.nodeValue || "";
+    let val = firstChild.nodeValue || "";
+    if (val.startsWith("/")) {
+      val = val.slice(1);
+      firstChild.nodeValue = val;
+    }
 
     if (type === "scene-heading" || type === "scene-heading-sub") {
       const match = val.match(/^#+\s*/);

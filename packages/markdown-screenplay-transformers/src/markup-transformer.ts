@@ -54,6 +54,7 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
     const initialLine = this._activeType === ScreenplayActiveType.None && this._activeData.trim().length === 0;
 
     if (initialLine) {
+      const trimmed = line.trim();
       switch (true) {
         case line.match(/^#{1,6} /) !== null:
         case line.startsWith("# "):
@@ -62,8 +63,7 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
         case line.startsWith(": "):
           this._activeType = ScreenplayActiveType.Transition;
           break;
-        case line.startsWith("@"):
-        case line.startsWith("[") && line.match(/^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/) !== null:
+        case isCharacterLine(trimmed):
           this._activeType = ScreenplayActiveType.Dialog_Character;
           break;
         default:
@@ -137,4 +137,46 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
 
     if (isBlankLine) this._activeType = ScreenplayActiveType.None;
   }
+}
+
+export function isCharacterLine(trimmed: string): boolean {
+  if (
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("#") ||
+    trimmed.startsWith(":") ||
+    trimmed.startsWith(">")
+  ) {
+    return false;
+  }
+
+  // 1. Check [alias](reference) format
+  const aliasMatch = trimmed.match(/^\[(.+?)\]\((.+?)\)(?:\s*\((.+?)\))?$/);
+  if (aliasMatch) {
+    const alias = aliasMatch[1].trim();
+    const ref = aliasMatch[2].trim();
+    const paren = aliasMatch[3] ? aliasMatch[3].trim() : "";
+    
+    const isAliasCaps = /[A-Z]/.test(alias) && !/[a-z]/.test(alias);
+    const isRefCaps = /[A-Z]/.test(ref) && !/[a-z]/.test(ref);
+    const isParenCaps = paren === "" || (/[A-Z]/.test(paren) && !/[a-z]/.test(paren));
+    
+    return isAliasCaps && isRefCaps && isParenCaps;
+  }
+
+  // 2. Check @(name) format
+  const parenMatch = trimmed.match(/^@\((.+?)\)$/);
+  if (parenMatch) {
+    const name = parenMatch[1].trim();
+    return /[A-Z]/.test(name) && !/[a-z]/.test(name);
+  }
+
+  // 3. Check @name format
+  if (trimmed.startsWith("@")) {
+    const name = trimmed.slice(1).trim();
+    if (name.length === 0) return false;
+    return /[A-Z]/.test(name) && !/[a-z]/.test(name);
+  }
+
+  // 4. Plain text / ALL CAPS format
+  return /[A-Z]/.test(trimmed) && !/[a-z]/.test(trimmed);
 }

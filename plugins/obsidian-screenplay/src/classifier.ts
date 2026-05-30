@@ -14,6 +14,7 @@
  */
 
 import type { LineClassification, LineType } from "./types";
+import { isCharacterLine } from "../../../packages/markdown-screenplay-transformers/dist/markup-transformer";
 
 /** Active parsing state while classifying lines within a contiguous block. */
 type ActiveState = "none" | "scene" | "transition" | "dialog-character" | "dialog" | "action";
@@ -72,6 +73,7 @@ export function classifyFile(text: string): LineClassification[] {
   return classifications;
 }
 
+
 /**
  * Detects what kind of block starts with this line.
  */
@@ -86,8 +88,8 @@ function detectBlockStart(trimmed: string, nextLine: string | undefined): Active
     return "transition";
   }
 
-  // Character names: `@Name` or `[Alias](Name)` with optional parenthetical suffix
-  if (trimmed.startsWith("@") || /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(trimmed)) {
+  // Character names: `@Name`, `@(Name)`, `[Alias](Name)` or ALL CAPS
+  if (isCharacterLine(trimmed)) {
     const isNextLineBlank = !nextLine || nextLine.trim().length === 0;
     return isNextLineBlank ? "action" : "dialog-character";
   }

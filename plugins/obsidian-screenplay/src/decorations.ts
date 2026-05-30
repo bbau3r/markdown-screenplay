@@ -400,6 +400,10 @@ function hideSyntaxPrefix(
 ): void {
   const text = line.text;
 
+  if (text.startsWith("/")) {
+    builder.add(line.from, line.from + 1, Decoration.replace({}));
+  }
+
   if (type === "scene-heading" || type === "scene-heading-sub") {
     const match = text.match(/^#+\s*/);
     if (match) builder.add(line.from, line.from + match[0].length, Decoration.replace({}));

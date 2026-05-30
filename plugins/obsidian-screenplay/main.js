@@ -455,6 +455,44 @@ function serializeFrontmatter(fm) {
   return lines.join("\n");
 }
 
+// ../../packages/markdown-screenplay-transformers/dist/markup-transformer.js
+var ScreenplayActiveType;
+(function(ScreenplayActiveType2) {
+  ScreenplayActiveType2[ScreenplayActiveType2["None"] = 0] = "None";
+  ScreenplayActiveType2[ScreenplayActiveType2["Dialog"] = 1] = "Dialog";
+  ScreenplayActiveType2[ScreenplayActiveType2["Scene"] = 2] = "Scene";
+  ScreenplayActiveType2[ScreenplayActiveType2["Dialog_Character"] = 3] = "Dialog_Character";
+  ScreenplayActiveType2[ScreenplayActiveType2["Action"] = 4] = "Action";
+  ScreenplayActiveType2[ScreenplayActiveType2["Transition"] = 5] = "Transition";
+})(ScreenplayActiveType || (ScreenplayActiveType = {}));
+function isCharacterLine(trimmed) {
+  if (trimmed.startsWith("/") || trimmed.startsWith("#") || trimmed.startsWith(":") || trimmed.startsWith(">")) {
+    return false;
+  }
+  const aliasMatch = trimmed.match(/^\[(.+?)\]\((.+?)\)(?:\s*\((.+?)\))?$/);
+  if (aliasMatch) {
+    const alias = aliasMatch[1].trim();
+    const ref = aliasMatch[2].trim();
+    const paren = aliasMatch[3] ? aliasMatch[3].trim() : "";
+    const isAliasCaps = /[A-Z]/.test(alias) && !/[a-z]/.test(alias);
+    const isRefCaps = /[A-Z]/.test(ref) && !/[a-z]/.test(ref);
+    const isParenCaps = paren === "" || /[A-Z]/.test(paren) && !/[a-z]/.test(paren);
+    return isAliasCaps && isRefCaps && isParenCaps;
+  }
+  const parenMatch = trimmed.match(/^@\((.+?)\)$/);
+  if (parenMatch) {
+    const name = parenMatch[1].trim();
+    return /[A-Z]/.test(name) && !/[a-z]/.test(name);
+  }
+  if (trimmed.startsWith("@")) {
+    const name = trimmed.slice(1).trim();
+    if (name.length === 0)
+      return false;
+    return /[A-Z]/.test(name) && !/[a-z]/.test(name);
+  }
+  return /[A-Z]/.test(trimmed) && !/[a-z]/.test(trimmed);
+}
+
 // src/classifier.ts
 function classifyFile(text) {
   const lines = text.split(/\r?\n/);
@@ -498,7 +536,7 @@ function detectBlockStart(trimmed, nextLine) {
   if (trimmed.startsWith(": ")) {
     return "transition";
   }
-  if (trimmed.startsWith("@") || /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(trimmed)) {
+  if (isCharacterLine(trimmed)) {
     const isNextLineBlank = !nextLine || nextLine.trim().length === 0;
     return isNextLineBlank ? "action" : "dialog-character";
   }
@@ -886,6 +924,9 @@ function decorateScreenplayLine(view, builder, line, lineNumber, classification)
 }
 function hideSyntaxPrefix(builder, line, type) {
   const text = line.text;
+  if (text.startsWith("/")) {
+    builder.add(line.from, line.from + 1, import_view2.Decoration.replace({}));
+  }
   if (type === "scene-heading" || type === "scene-heading-sub") {
     const match = text.match(/^#+\s*/);
     if (match)
@@ -1059,7 +1100,11 @@ function skipNonContentLines(currentLine, endLine, classifications) {
 function stripPrefixFromLineElement(lineEl, type) {
   const firstChild = lineEl.firstChild;
   if (firstChild && firstChild.nodeType === Node.TEXT_NODE) {
-    const val = firstChild.nodeValue || "";
+    let val = firstChild.nodeValue || "";
+    if (val.startsWith("/")) {
+      val = val.slice(1);
+      firstChild.nodeValue = val;
+    }
     if (type === "scene-heading" || type === "scene-heading-sub") {
       const match = val.match(/^#+\s*/);
       if (match)

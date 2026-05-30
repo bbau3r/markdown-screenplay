@@ -1,5 +1,6 @@
 import { nextTick } from "vue";
 import type { Ref } from "vue";
+import { isCharacterLine } from "@transformers";
 import type { ScreenplayElement, ScreenplayElementType } from "@transformers";
 import { getCaretOffset, setCursorOffset, isCaretAtStart } from "./caret";
 
@@ -49,7 +50,7 @@ export function useElementKeydown(
 
       if (element.type === "action" && editorRef.value) {
         const text = editorRef.value.innerText.trim();
-        const isChar = (text.startsWith("@") && text.length > 1) || (text.startsWith("[") && /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(text));
+        const isChar = isCharacterLine(text);
         if (isChar) {
           event.preventDefault();
           const offset = getCaretOffset(editorRef.value);
