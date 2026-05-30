@@ -343,7 +343,13 @@ function classifyFile(text) {
       } else if (trimmed.startsWith(": ") && !trimmed.endsWith(" :")) {
         activeType = "transition";
       } else if (trimmed.startsWith("@") || trimmed.startsWith("[") && trimmed.match(/^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/) !== null) {
-        activeType = "dialog-character";
+        const nextLine = lines[i + 1];
+        const isNextLineBlank = !nextLine || nextLine.trim().length === 0;
+        if (isNextLineBlank) {
+          activeType = "action";
+        } else {
+          activeType = "dialog-character";
+        }
       } else {
         activeType = "action";
       }
