@@ -1,0 +1,126 @@
+/* Screenplay MDSP Plugin Styles */
+
+/* Enforce monospace font for the screenplay container */
+.mdsp-enabled .cm-content {
+  font-family: 'Courier Prime', 'Courier New', Courier, monospace !important;
+  font-size: 17px !important;
+  line-height: 1.5 !important;
+  max-width: 800px !important;
+  margin: 0 auto !important;
+  padding: 40px !important;
+  background-color: var(--background-primary) !important;
+}
+
+/* Base line formatting */
+.mdsp-enabled .cm-line.cm-mdsp-scene-heading,
+.mdsp-enabled .cm-line.cm-mdsp-scene-heading-sub {
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  margin-top: 1.5em !important;
+  margin-bottom: 0.5em !important;
+}
+
+.mdsp-enabled .cm-line.cm-mdsp-scene-transition {
+  font-size: 17px !important;
+  text-align: right !important;
+  text-transform: uppercase !important;
+  margin-top: 1em !important;
+  margin-bottom: 1em !important;
+  padding-right: 10% !important;
+}
+
+.mdsp-enabled .cm-line.cm-mdsp-scene-transition::after {
+  content: ":" !important;
+}
+
+.mdsp-enabled .cm-line.cm-mdsp-dialog-heading {
+  font-size: 17px !important;
+  text-align: center !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  margin-top: 1.2em !important;
+  margin-bottom: 0.2em !important;
+}
+
+.mdsp-enabled .cm-line.cm-mdsp-dialog-parenthetical {
+  font-size: 17px !important;
+  text-align: center !important;
+  font-style: italic !important;
+  margin-top: 0.2em !important;
+  margin-bottom: 0.2em !important;
+  padding-left: 20% !important;
+  padding-right: 20% !important;
+}
+
+.mdsp-enabled .cm-line.cm-mdsp-dialog {
+  font-size: 17px !important;
+  text-align: left !important;
+  margin-top: 0.2em !important;
+  margin-bottom: 0.5em !important;
+  padding-left: 25% !important;
+  padding-right: 25% !important;
+}
+
+.mdsp-enabled .cm-line.cm-mdsp-action {
+  font-size: 17px !important;
+  margin-top: 0.8em !important;
+  margin-bottom: 0.8em !important;
+}
+
+/* Hide markdown screenplay prefix formatting characters when cursor is not on the line */
+.cm-mdsp-syntax-hidden {
+  display: none !important;
+}
+
+/* Character references highlighting */
+.cm-mdsp-character-highlight {
+  border-radius: 4px;
+  padding: 1px 3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+  text-transform: uppercase !important; /* Force uppercase display in editor */
+}
+
+/* Strip Obsidian's standard link styling (underlines, color, border) and disable pointer events when formatted as a character */
+.mdsp-enabled .cm-mdsp-character-highlight,
+.mdsp-enabled .cm-mdsp-character-highlight *,
+.mdsp-enabled .cm-mdsp-character-active,
+.mdsp-enabled .cm-mdsp-character-active * {
+  color: var(--text-normal) !important;
+  text-decoration: none !important;
+  border-bottom: none !important;
+  pointer-events: none !important; /* Disable hover previews and link clicks */
+  cursor: text !important; /* Force standard text selection cursor instead of link hand pointer */
+}
+
+/* Frontmatter / Properties styling */
+.cm-line.cm-mdsp-property-divider {
+  color: var(--text-muted) !important;
+  font-family: var(--font-monospace) !important;
+  font-size: 13px !important;
+  opacity: 0.5;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-bottom: 1px dashed var(--background-modifier-border) !important;
+}
+
+.cm-line.cm-mdsp-property-line {
+  font-family: var(--font-monospace) !important;
+  font-size: 13px !important;
+  color: var(--text-muted) !important;
+  line-height: 1.6 !important;
+  padding-left: 15px !important;
+  background-color: var(--background-secondary-alt) !important;
+}
+
+/* Key styling */
+.cm-mdsp-property-key {
+  color: var(--text-accent) !important;
+  font-weight: 600;
+}
+
+/* Value styling */
+.cm-mdsp-property-value {
+  color: var(--text-normal) !important;
+}
