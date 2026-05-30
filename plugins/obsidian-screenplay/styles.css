@@ -2,7 +2,7 @@
 
 /* Enforce monospace font for the screenplay container */
 .mdsp-enabled .cm-content {
-  font-family: 'Courier Prime', 'Courier New', Courier, monospace !important;
+  font-family: "Courier Prime", "Courier New", Courier, monospace !important;
   font-size: 17px !important;
   line-height: 1.5 !important;
   max-width: 800px !important;
@@ -11,7 +11,78 @@
   background-color: var(--background-primary) !important;
 }
 
-/* Base line formatting */
+/* ========================================================================= */
+/* BLOCKQUOTE & QUOTE RESET                                                  */
+/* ========================================================================= */
+
+/* Remove blockquote border, background, and padding/margins in screenplay editor and preview */
+.mdsp-enabled .HyperMD-quote,
+.mdsp-enabled .cm-quote,
+.mdsp-enabled blockquote,
+.mdsp-enabled .cm-activeLine.HyperMD-quote,
+.mdsp-enabled .cm-activeLine.cm-quote {
+  border-left: none !important;
+  border-right: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Hide the vertical line pseudo-elements Obsidian uses for blockquotes */
+.mdsp-enabled .HyperMD-quote::before,
+.mdsp-enabled .cm-quote::before,
+.mdsp-enabled .cm-activeLine.HyperMD-quote::before,
+.mdsp-enabled .cm-activeLine.cm-quote::before,
+.mdsp-enabled .cm-formatting-quote::before,
+.mdsp-enabled blockquote::before {
+  display: none !important;
+  content: none !important;
+  background: none !important;
+  border: none !important;
+  width: 0 !important;
+}
+
+/* ========================================================================= */
+/* SCREENPLAY LINE FORMATTING & SPECIFIC LAYOUTS                             */
+/* ========================================================================= */
+
+/* Dialogue Headings (Character Names) */
+.mdsp-enabled .cm-line.cm-mdsp-dialog-heading,
+.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog-heading {
+  font-size: 17px !important;
+  text-align: center !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  margin-top: 1.2em !important;
+  margin-bottom: 0.2em !important;
+}
+
+/* Dialogue Parentheticals */
+.mdsp-enabled .cm-line.cm-mdsp-dialog-parenthetical,
+.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog-parenthetical {
+  font-size: 17px !important;
+  text-align: left !important;
+  font-style: italic !important;
+  margin-top: 0.2em !important;
+  margin-bottom: 0.2em !important;
+  margin-left: 30% !important;
+  margin-right: 20% !important;
+  padding: 0 !important;
+}
+
+/* Dialogue blocks */
+.mdsp-enabled .cm-line.cm-mdsp-dialog,
+.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog {
+  font-size: 17px !important;
+  text-align: left !important;
+  margin-top: 0.2em !important;
+  margin-bottom: 0.5em !important;
+  margin-left: 20% !important;
+  margin-right: 20% !important;
+  padding-left: 0 !important;
+}
+
+/* Scene Headings */
 .mdsp-enabled .cm-line.cm-mdsp-scene-heading,
 .mdsp-enabled .cm-line.cm-mdsp-scene-heading-sub {
   font-size: 17px !important;
@@ -21,6 +92,7 @@
   margin-bottom: 0.5em !important;
 }
 
+/* Scene Transitions */
 .mdsp-enabled .cm-line.cm-mdsp-scene-transition {
   font-size: 17px !important;
   text-align: right !important;
@@ -34,34 +106,7 @@
   content: ":" !important;
 }
 
-.mdsp-enabled .cm-line.cm-mdsp-dialog-heading {
-  font-size: 17px !important;
-  text-align: center !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  margin-top: 1.2em !important;
-  margin-bottom: 0.2em !important;
-}
-
-.mdsp-enabled .cm-line.cm-mdsp-dialog-parenthetical {
-  font-size: 17px !important;
-  text-align: center !important;
-  font-style: italic !important;
-  margin-top: 0.2em !important;
-  margin-bottom: 0.2em !important;
-  padding-left: 20% !important;
-  padding-right: 20% !important;
-}
-
-.mdsp-enabled .cm-line.cm-mdsp-dialog {
-  font-size: 17px !important;
-  text-align: left !important;
-  margin-top: 0.2em !important;
-  margin-bottom: 0.5em !important;
-  padding-left: 25% !important;
-  padding-right: 25% !important;
-}
-
+/* Action Blocks */
 .mdsp-enabled .cm-line.cm-mdsp-action {
   font-size: 17px !important;
   margin-top: 0.8em !important;
