@@ -112,7 +112,7 @@ watch(
         const clampedOffset = Math.max(0, Math.min(newOffset, newText.length));
 
         nextTick(() => {
-          if (editorRef.value) {
+          if (editorRef.value && document.activeElement === editorRef.value) {
             setCursorOffset(editorRef.value, clampedOffset);
           }
         });

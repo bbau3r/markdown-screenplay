@@ -35,12 +35,36 @@ export function useElementKeydown(
       flushDebounce();
     }
 
-    // 1. Enter key: split element or convert empty dialog to action
+    // 1. Enter key: split element or convert empty dialog to action, or action with character prefix to dialog-character
     if (event.key === "Enter" && !event.shiftKey) {
       if (element.type === "dialog" && editorRef.value && editorRef.value.innerText.trim() === "") {
         event.preventDefault();
         emit("update:type", { id: element.id, type: "action" });
         return;
+      }
+
+      if (element.type === "action" && editorRef.value) {
+        const text = editorRef.value.innerText.trim();
+        const isChar = text.startsWith("@") || (text.startsWith("[") && /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(text));
+        if (isChar) {
+          event.preventDefault();
+          const offset = getCaretOffset(editorRef.value);
+          const fullText = editorRef.value.innerText;
+          const textBeforeCursor = fullText.slice(0, offset).trim();
+          const textAfterCursor = fullText.slice(offset).trim();
+
+          let charText = textBeforeCursor;
+          if (charText.startsWith("@")) {
+            charText = charText.slice(1).trim();
+          }
+
+          emit("update:type", { id: element.id, type: "dialog-character" });
+          emit("update:text", { id: element.id, text: charText });
+          editorRef.value.innerText = charText;
+
+          emit("split", { id: element.id, text1: charText, text2: textAfterCursor });
+          return;
+        }
       }
 
       event.preventDefault();
@@ -59,7 +83,7 @@ export function useElementKeydown(
     }
 
     // 2. Space key: check markdown prefix shortcuts
-    if (event.key === " ") {
+    if (event.key === " " && element.type === "action") {
       if (editorRef.value) {
         const offset = getCaretOffset(editorRef.value);
         const text = editorRef.value.innerText;
@@ -95,7 +119,7 @@ export function useElementKeydown(
 
           nextTick(() => {
             if (editorRef.value) {
-              setCursorOffset(editorRef.value, 0);
+              setCursorOffset(editorRef.value, newText.length);
             }
           });
           return;

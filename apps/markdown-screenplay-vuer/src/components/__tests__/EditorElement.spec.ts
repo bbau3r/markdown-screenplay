@@ -419,4 +419,82 @@ describe("EditorElement.vue Backspace Demotion", () => {
       text: "[BOB](Robert) (cont'd)",
     });
   });
+
+  it("converts action with @JOHN to dialog-character on Enter", async () => {
+    const el: ScreenplayElement = {
+      id: "el-enter-char",
+      type: "action",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+
+    (contentDiv.element as HTMLDivElement).innerText = "@JOHN";
+    overrideCaretOffset = 5;
+
+    await contentDiv.trigger("keydown", { key: "Enter" });
+
+    overrideCaretOffset = null;
+
+    const emittedType = wrapper.emitted("update:type");
+    expect(emittedType).toBeTruthy();
+    expect(emittedType![0][0]).toEqual({
+      id: "el-enter-char",
+      type: "dialog-character",
+    });
+
+    const emittedText = wrapper.emitted("update:text");
+    expect(emittedText).toBeTruthy();
+    expect(emittedText![0][0]).toEqual({
+      id: "el-enter-char",
+      text: "JOHN",
+    });
+
+    const emittedSplit = wrapper.emitted("split");
+    expect(emittedSplit).toBeTruthy();
+    expect(emittedSplit![0][0]).toEqual({
+      id: "el-enter-char",
+      text1: "JOHN",
+      text2: "",
+    });
+  });
+
+  it("converts action with alias to dialog-character on Enter", async () => {
+    const el: ScreenplayElement = {
+      id: "el-enter-alias",
+      type: "action",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+
+    (contentDiv.element as HTMLDivElement).innerText = "[BOB](Robert) (cont'd)";
+    overrideCaretOffset = 23;
+
+    await contentDiv.trigger("keydown", { key: "Enter" });
+
+    overrideCaretOffset = null;
+
+    const emittedType = wrapper.emitted("update:type");
+    expect(emittedType).toBeTruthy();
+    expect(emittedType![0][0]).toEqual({
+      id: "el-enter-alias",
+      type: "dialog-character",
+    });
+
+    const emittedText = wrapper.emitted("update:text");
+    expect(emittedText).toBeTruthy();
+    expect(emittedText![0][0]).toEqual({
+      id: "el-enter-alias",
+      text: "[BOB](Robert) (cont'd)",
+    });
+
+    const emittedSplit = wrapper.emitted("split");
+    expect(emittedSplit).toBeTruthy();
+    expect(emittedSplit![0][0]).toEqual({
+      id: "el-enter-alias",
+      text1: "[BOB](Robert) (cont'd)",
+      text2: "",
+    });
+  });
 });
