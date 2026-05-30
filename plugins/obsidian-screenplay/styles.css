@@ -50,7 +50,8 @@
 
 /* Dialogue Headings (Character Names) */
 .mdsp-enabled .cm-line.cm-mdsp-dialog-heading,
-.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog-heading {
+.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog-heading,
+.mdsp-enabled .cm-mdsp-dialog-heading {
   font-size: 17px !important;
   text-align: center !important;
   font-weight: 700 !important;
@@ -63,7 +64,8 @@
 
 /* Dialogue Parentheticals */
 .mdsp-enabled .cm-line.cm-mdsp-dialog-parenthetical,
-.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog-parenthetical {
+.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog-parenthetical,
+.mdsp-enabled .cm-mdsp-dialog-parenthetical {
   font-size: 17px !important;
   text-align: left !important;
   font-style: italic !important;
@@ -79,7 +81,8 @@
 
 /* Dialogue blocks */
 .mdsp-enabled .cm-line.cm-mdsp-dialog,
-.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog {
+.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog,
+.mdsp-enabled .cm-mdsp-dialog {
   font-size: 17px !important;
   text-align: left !important;
   margin-top: 0 !important;
@@ -93,7 +96,9 @@
 
 /* Scene Headings */
 .mdsp-enabled .cm-line.cm-mdsp-scene-heading,
-.mdsp-enabled .cm-line.cm-mdsp-scene-heading-sub {
+.mdsp-enabled .cm-line.cm-mdsp-scene-heading-sub,
+.mdsp-enabled .cm-mdsp-scene-heading,
+.mdsp-enabled .cm-mdsp-scene-heading-sub {
   font-size: 17px !important;
   font-weight: 800 !important;
   text-transform: uppercase !important;
@@ -104,7 +109,8 @@
 }
 
 /* Scene Transitions */
-.mdsp-enabled .cm-line.cm-mdsp-scene-transition {
+.mdsp-enabled .cm-line.cm-mdsp-scene-transition,
+.mdsp-enabled .cm-mdsp-scene-transition {
   font-size: 17px !important;
   text-align: right !important;
   text-transform: uppercase !important;
@@ -115,12 +121,26 @@
   padding-right: 10% !important;
 }
 
-.mdsp-enabled .cm-line.cm-mdsp-scene-transition::after {
+.mdsp-enabled .cm-line.cm-mdsp-scene-transition::after,
+.mdsp-enabled .cm-mdsp-scene-transition::after {
   content: ":" !important;
 }
 
+/* Centered Action */
+.mdsp-enabled .cm-line.cm-mdsp-centered,
+.mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-centered,
+.mdsp-enabled .cm-mdsp-centered {
+  font-size: 17px !important;
+  text-align: center !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0.8em !important;
+  padding-bottom: 0.8em !important;
+}
+
 /* Action Blocks */
-.mdsp-enabled .cm-line.cm-mdsp-action {
+.mdsp-enabled .cm-line.cm-mdsp-action,
+.mdsp-enabled .cm-mdsp-action {
   font-size: 17px !important;
   margin-top: 0 !important;
   margin-bottom: 0 !important;

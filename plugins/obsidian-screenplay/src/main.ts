@@ -309,6 +309,171 @@ function getCharactersBlockRange(doc: Text): { start: number, end: number } {
   return { start, end };
 }
 
+interface LineClassification {
+  type: string;
+}
+
+function classifyFile(text: string): LineClassification[] {
+  const lines = text.split(/\r?\n/);
+  const classifications: LineClassification[] = [];
+  
+  let inFrontmatter = false;
+  let activeType = "none";
+  let isSubScene = false;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    
+    if (trimmed === "---") {
+      if (i === 0 || inFrontmatter) {
+        inFrontmatter = !inFrontmatter;
+        classifications.push({ type: "frontmatter" });
+        continue;
+      }
+    }
+    
+    if (inFrontmatter) {
+      classifications.push({ type: "frontmatter" });
+      continue;
+    }
+    
+    if (trimmed.length === 0) {
+      classifications.push({ type: "blank" });
+      activeType = "none";
+      continue;
+    }
+    
+    if (activeType === "none") {
+      if (trimmed.match(/^#{1,6} /) !== null || trimmed.startsWith("# ")) {
+        activeType = "scene";
+        const indentCount = (trimmed.match(/^#+/) || ["#"])[0].length;
+        isSubScene = (indentCount !== 1);
+      } else if (trimmed.startsWith(": ") && !trimmed.endsWith(" :")) {
+        activeType = "transition";
+      } else if (trimmed.startsWith("@") || (trimmed.startsWith("[") && trimmed.match(/^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/) !== null)) {
+        activeType = "dialog-character";
+      } else {
+        activeType = "action";
+      }
+    }
+    
+    if (activeType === "scene") {
+      classifications.push({ type: isSubScene ? "scene-heading-sub" : "scene-heading" });
+    } else if (activeType === "transition") {
+      classifications.push({ type: "scene-transition" });
+    } else if (activeType === "dialog-character") {
+      classifications.push({ type: "dialog-character" });
+      activeType = "dialog";
+    } else if (activeType === "dialog") {
+      if (trimmed.startsWith("(")) {
+        classifications.push({ type: "dialog-parenthetical" });
+      } else {
+        classifications.push({ type: "dialog" });
+      }
+    } else {
+      if (trimmed.startsWith(": ") && trimmed.endsWith(" :")) {
+        classifications.push({ type: "centered-action" });
+      } else {
+        classifications.push({ type: "action" });
+      }
+    }
+  }
+  
+  return classifications;
+}
+
+function stripPrefixFromLineElement(lineEl: HTMLElement, type: string) {
+  const firstChild = lineEl.firstChild;
+  if (firstChild && firstChild.nodeType === Node.TEXT_NODE) {
+    const val = firstChild.nodeValue || "";
+    if (type === "scene-heading" || type === "scene-heading-sub") {
+      const match = val.match(/^#+\s*/);
+      if (match) {
+        firstChild.nodeValue = val.slice(match[0].length);
+      }
+    } else if (type === "scene-transition") {
+      const match = val.match(/^:\s*/);
+      if (match) {
+        firstChild.nodeValue = val.slice(match[0].length);
+      }
+    } else if (type === "dialog-character") {
+      if (val.startsWith("@")) {
+        firstChild.nodeValue = val.slice(1);
+      }
+    } else if (type === "centered-action") {
+      const matchStart = val.match(/^:\s*/);
+      if (matchStart) {
+        firstChild.nodeValue = val.slice(matchStart[0].length);
+      }
+    }
+  }
+
+  if (type === "centered-action") {
+    const lastChild = lineEl.lastChild;
+    if (lastChild && lastChild.nodeType === Node.TEXT_NODE) {
+      const val = lastChild.nodeValue || "";
+      const matchEnd = val.match(/\s*:$/);
+      if (matchEnd) {
+        lastChild.nodeValue = val.slice(0, -matchEnd[0].length);
+      }
+    }
+  }
+}
+
+function splitParagraphByBr(pEl: HTMLElement, lineTypes: string[]): HTMLElement[] {
+  const newEls: HTMLElement[] = [];
+  let currentGroup: Node[] = [];
+
+  const createLineElement = (nodes: Node[], type: string) => {
+    const lineEl = document.createElement("span");
+    lineEl.style.display = "block";
+    if (type === "dialog-character") {
+      lineEl.className = "cm-mdsp-dialog-heading";
+    } else if (type === "dialog-parenthetical") {
+      lineEl.className = "cm-mdsp-dialog-parenthetical";
+    } else if (type === "dialog") {
+      lineEl.className = "cm-mdsp-dialog";
+    } else if (type === "scene-transition") {
+      lineEl.className = "cm-mdsp-scene-transition";
+    } else if (type === "centered-action") {
+      lineEl.className = "cm-mdsp-centered";
+    } else if (type === "scene-heading") {
+      lineEl.className = "cm-mdsp-scene-heading";
+    } else if (type === "scene-heading-sub") {
+      lineEl.className = "cm-mdsp-scene-heading-sub";
+    } else {
+      lineEl.className = "cm-mdsp-action";
+    }
+
+    for (const node of nodes) {
+      lineEl.appendChild(node);
+    }
+    
+    stripPrefixFromLineElement(lineEl, type);
+    return lineEl;
+  };
+
+  const childNodes = Array.from(pEl.childNodes);
+  let lineIdx = 0;
+  
+  for (const node of childNodes) {
+    if (node.nodeName.toLowerCase() === "br") {
+      const type = lineTypes[lineIdx] || "action";
+      newEls.push(createLineElement(currentGroup, type));
+      currentGroup = [];
+      lineIdx++;
+    } else {
+      currentGroup.push(node);
+    }
+  }
+  
+  const type = lineTypes[lineIdx] || "action";
+  newEls.push(createLineElement(currentGroup, type));
+  
+  return newEls;
+}
+
 // Helper function to check if a document position falls inside a character reference match
 function isPosInCharacterMatch(pos: number, doc: Text, colors: Map<string, string>): boolean {
   if (pos < 0 || pos > doc.length) return false;
@@ -517,8 +682,7 @@ export default class ScreenplayPlugin extends Plugin {
     this.registerEditorExtension(this.buildEditorExtension());
     logDebug(this.app, "Editor extension registered successfully");
 
-    // Register a markdown post-processor for Reading View
-    this.registerMarkdownPostProcessor((el, ctx) => {
+    this.registerMarkdownPostProcessor(async (el, ctx) => {
       logDebug(this.app, `Markdown post-processor running for ${ctx.sourcePath}`);
       try {
         const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
@@ -556,52 +720,67 @@ export default class ScreenplayPlugin extends Plugin {
           }
         }
 
-        // Classify screenplay layout elements in Reading View
-        el.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((headerEl) => {
-          headerEl.classList.add("cm-mdsp-scene-heading");
-        });
+        // Get classifications for the file
+        const classifications = await this.getClassificationsForFile(file);
+        const info = ctx.getSectionInfo(el);
+        if (info) {
+          const childNodes = Array.from(el.childNodes);
+          let currentLine = info.lineStart;
 
-        el.querySelectorAll("blockquote").forEach((bqEl) => {
-          let depth = 0;
-          let current: HTMLElement | null = bqEl;
-          while (current && current !== el) {
-            if (current.nodeName.toLowerCase() === "blockquote") {
-              depth++;
+          for (const child of childNodes) {
+            if (child.nodeType !== Node.ELEMENT_NODE) continue;
+            const childEl = child as HTMLElement;
+            const nodeName = childEl.nodeName.toLowerCase();
+
+            // Skip blank/frontmatter lines in classifications
+            while (
+              currentLine <= info.lineEnd &&
+              currentLine < classifications.length &&
+              (classifications[currentLine].type === "blank" || classifications[currentLine].type === "frontmatter")
+            ) {
+              currentLine++;
             }
-            current = current.parentElement;
-          }
 
-          if (depth === 1) {
-            bqEl.classList.add("cm-mdsp-dialog-heading");
-          } else if (depth >= 2) {
-            const text = bqEl.textContent?.trim() || "";
-            if (text.startsWith("(")) {
-              bqEl.classList.add("cm-mdsp-dialog-parenthetical");
-            } else {
-              bqEl.classList.add("cm-mdsp-dialog");
+            if (currentLine > info.lineEnd || currentLine >= classifications.length) {
+              break;
             }
-          }
-        });
 
-        el.querySelectorAll("p").forEach((pEl) => {
-          if (pEl.closest("blockquote")) {
-            return;
-          }
+            if (nodeName.match(/^h[1-6]$/)) {
+              const type = classifications[currentLine].type;
+              if (type === "scene-heading-sub") {
+                childEl.className = "cm-mdsp-scene-heading-sub";
+              } else {
+                childEl.className = "cm-mdsp-scene-heading";
+              }
+              stripPrefixFromLineElement(childEl, type);
+              currentLine++;
+            } else if (nodeName === "p") {
+              const brCount = childEl.querySelectorAll("br").length;
+              const lineTypes: string[] = [];
+              for (let i = 0; i <= brCount; i++) {
+                while (
+                  currentLine <= info.lineEnd &&
+                  currentLine < classifications.length &&
+                  (classifications[currentLine].type === "blank" || classifications[currentLine].type === "frontmatter")
+                ) {
+                  currentLine++;
+                }
+                if (currentLine <= info.lineEnd && currentLine < classifications.length) {
+                  lineTypes.push(classifications[currentLine].type);
+                  currentLine++;
+                } else {
+                  lineTypes.push("action");
+                }
+              }
 
-          const text = pEl.textContent?.trim() || "";
-          if (text.startsWith(":")) {
-            pEl.classList.add("cm-mdsp-scene-transition");
-            const firstChild = pEl.firstChild;
-            if (firstChild && firstChild.nodeType === Node.TEXT_NODE) {
-              const val = firstChild.nodeValue || "";
-              if (val.trimStart().startsWith(":")) {
-                firstChild.nodeValue = val.trimStart().slice(1).trimStart();
+              const newEls = splitParagraphByBr(childEl, lineTypes);
+              childEl.innerHTML = "";
+              for (const newEl of newEls) {
+                childEl.appendChild(newEl);
               }
             }
-          } else {
-            pEl.classList.add("cm-mdsp-action");
           }
-        });
+        }
 
         logDebug(this.app, `Parsed Reading View YAML colors count: ${colors.size}`);
         if (colors.size === 0) return;
@@ -626,9 +805,9 @@ export default class ScreenplayPlugin extends Plugin {
         // 2. Process inline text nodes containing @Runner or @(Runner) -> styled span
         const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
         let node;
-        const nodesToReplace: { node: Text; parent: ParentNode; newNodes: Node[] }[] = [];
+        const nodesToReplace: { node: globalThis.Text; parent: ParentNode; newNodes: Node[] }[] = [];
 
-        while (node = walk.nextNode() as Text) {
+        while (node = walk.nextNode() as globalThis.Text) {
           const parentName = node.parentNode?.nodeName.toLowerCase();
           if (parentName === "code" || parentName === "pre" || parentName === "a" || parentName === "style" || parentName === "script") {
             continue;
@@ -700,6 +879,19 @@ export default class ScreenplayPlugin extends Plugin {
   private panelObservers: MutationObserver[] = [];
   private panelDebounces = new Map<string, ReturnType<typeof setTimeout>>();
   private savingFrontmatter = false;
+
+  classificationsCache = new Map<string, { mtime: number, list: LineClassification[] }>();
+
+  async getClassificationsForFile(file: TFile): Promise<LineClassification[]> {
+    const cached = this.classificationsCache.get(file.path);
+    if (cached && cached.mtime === file.stat.mtime) {
+      return cached.list;
+    }
+    const content = await this.app.vault.cachedRead(file);
+    const list = classifyFile(content);
+    this.classificationsCache.set(file.path, { mtime: file.stat.mtime, list });
+    return list;
+  }
 
   // --- Frontmatter cache for editor decorations ---
   lastFrontmatterText = "";
@@ -1252,11 +1444,11 @@ export default class ScreenplayPlugin extends Plugin {
 
   buildEditorExtension() {
     const pluginInstance = this;
-
     return [
       ViewPlugin.fromClass(
         class {
           decorations: DecorationSet;
+          classificationCache = new WeakMap<Text, LineClassification[]>();
 
           constructor(view: EditorView) {
             this.decorations = this.buildDecorations(view);
@@ -1266,6 +1458,15 @@ export default class ScreenplayPlugin extends Plugin {
             if (update.docChanged || update.viewportChanged || update.selectionSet) {
               this.decorations = this.buildDecorations(update.view);
             }
+          }
+
+          getClassifications(doc: Text): LineClassification[] {
+            let cached = this.classificationCache.get(doc);
+            if (!cached) {
+              cached = classifyFile(doc.toString());
+              this.classificationCache.set(doc, cached);
+            }
+            return cached;
           }
 
           buildDecorations(view: EditorView): DecorationSet {
@@ -1332,6 +1533,7 @@ export default class ScreenplayPlugin extends Plugin {
               const charRange = pluginInstance.cachedCharRange;
 
               const builder = new RangeSetBuilder<Decoration>();
+              const classifications = this.getClassifications(view.state.doc);
 
               // 3. Walk visible ranges
               for (const { from, to } of view.visibleRanges) {
@@ -1570,24 +1772,35 @@ export default class ScreenplayPlugin extends Plugin {
                   }
 
                   // Style the screenplay lines
+                  const classification = classifications[l - 1];
                   let lineClass = "";
-                  if (text.startsWith("##")) {
-                    lineClass = "cm-mdsp-scene-heading-sub";
-                  } else if (text.startsWith("#")) {
-                    lineClass = "cm-mdsp-scene-heading";
-                  } else if (text.startsWith(":")) {
-                    lineClass = "cm-mdsp-scene-transition";
-                  } else if (text.startsWith(">>")) {
-                    const trimmed = text.slice(2).trim();
-                    if (trimmed.startsWith("(")) {
-                      lineClass = "cm-mdsp-dialog-parenthetical";
-                    } else {
-                      lineClass = "cm-mdsp-dialog";
+                  if (classification) {
+                    switch (classification.type) {
+                      case "scene-heading":
+                        lineClass = "cm-mdsp-scene-heading";
+                        break;
+                      case "scene-heading-sub":
+                        lineClass = "cm-mdsp-scene-heading-sub";
+                        break;
+                      case "scene-transition":
+                        lineClass = "cm-mdsp-scene-transition";
+                        break;
+                      case "dialog-character":
+                        lineClass = "cm-mdsp-dialog-heading";
+                        break;
+                      case "dialog":
+                        lineClass = "cm-mdsp-dialog";
+                        break;
+                      case "dialog-parenthetical":
+                        lineClass = "cm-mdsp-dialog-parenthetical";
+                        break;
+                      case "action":
+                        lineClass = "cm-mdsp-action";
+                        break;
+                      case "centered-action":
+                        lineClass = "cm-mdsp-centered";
+                        break;
                     }
-                  } else if (text.startsWith(">")) {
-                    lineClass = "cm-mdsp-dialog-heading";
-                  } else if (text.trim().length > 0) {
-                    lineClass = "cm-mdsp-action";
                   }
 
                   if (lineClass) {
@@ -1610,25 +1823,31 @@ export default class ScreenplayPlugin extends Plugin {
                        }
                      });
 
-                    if (!isCursorOnLine) {
-                      let hideLen = 0;
-                      if (text.startsWith("## ")) hideLen = 3;
-                      else if (text.startsWith("##")) hideLen = 2;
-                      else if (text.startsWith("# ")) hideLen = 2;
-                      else if (text.startsWith("#")) hideLen = 1;
-                      else if (text.startsWith(">> ")) hideLen = 3;
-                      else if (text.startsWith(">>")) hideLen = 2;
-                      else if (text.startsWith("> ")) hideLen = 2;
-                      else if (text.startsWith(">")) hideLen = 1;
-                      else if (text.startsWith(": ")) hideLen = 2;
-                      else if (text.startsWith(":")) hideLen = 1;
-
-                      if (hideLen > 0) {
-                        builder.add(
-                          line.from,
-                          line.from + hideLen,
-                          Decoration.replace({})
-                        );
+                    if (!isCursorOnLine && classification) {
+                      const type = classification.type;
+                      if (type === "scene-heading" || type === "scene-heading-sub") {
+                        const match = text.match(/^#+\s*/);
+                        if (match) {
+                          builder.add(line.from, line.from + match[0].length, Decoration.replace({}));
+                        }
+                      } else if (type === "scene-transition") {
+                        const match = text.match(/^:\s*/);
+                        if (match) {
+                          builder.add(line.from, line.from + match[0].length, Decoration.replace({}));
+                        }
+                      } else if (type === "dialog-character") {
+                        if (text.startsWith("@")) {
+                          builder.add(line.from, line.from + 1, Decoration.replace({}));
+                        }
+                      } else if (type === "centered-action") {
+                        const matchStart = text.match(/^:\s*/);
+                        const matchEnd = text.match(/\s*:$/);
+                        if (matchStart) {
+                          builder.add(line.from, line.from + matchStart[0].length, Decoration.replace({}));
+                        }
+                        if (matchEnd && line.to - matchEnd[0].length > line.from) {
+                          builder.add(line.to - matchEnd[0].length, line.to, Decoration.replace({}));
+                        }
                       }
                     }
                   }
@@ -1727,7 +1946,7 @@ export default class ScreenplayPlugin extends Plugin {
 
               const result = builder.finish();
               logDebug(pluginInstance.app, `buildDecorations finished successfully with size=${result.size}`);
-              return result;
+              return result as any;
             } catch (err: any) {
               logDebug(pluginInstance.app, `ERROR in buildDecorations: ${err.message}\nStack: ${err.stack}`);
               return Decoration.none;
