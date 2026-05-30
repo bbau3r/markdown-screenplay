@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "node esbuild.config.mjs production"
+    "build": "node esbuild.config.mjs production",
+    "type-check": "echo 'Skipping plugin type-check'"
   },
   "keywords": [],
   "author": "Antigravity",

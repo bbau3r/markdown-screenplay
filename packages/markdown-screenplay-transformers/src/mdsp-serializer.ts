@@ -9,7 +9,20 @@ import type { ScreenplayElement } from "./screenplay-element";
 export function serializeToMdsp(elements: ScreenplayElement[]): string {
   const lines: string[] = [];
 
-  for (const el of elements) {
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i];
+
+    if (i > 0) {
+      const prevEl = elements[i - 1];
+      const isCurrentDialog = el.type === 'dialog' || el.type === 'dialog-parenthetical';
+      const isPrevDialogOrChar = prevEl.type === 'dialog-character' || 
+                                 prevEl.type === 'dialog' || 
+                                 prevEl.type === 'dialog-parenthetical';
+      if (!(isCurrentDialog && isPrevDialogOrChar)) {
+        lines.push('');
+      }
+    }
+
     switch (el.type) {
       case 'scene-heading':
         lines.push(`# ${el.text}`);
@@ -21,11 +34,11 @@ export function serializeToMdsp(elements: ScreenplayElement[]): string {
         lines.push(`: ${el.text}`);
         break;
       case 'dialog-character':
-        lines.push(`> ${el.text}`);
+        lines.push(`@${el.text}`);
         break;
       case 'dialog':
       case 'dialog-parenthetical':
-        lines.push(`>> ${el.text}`);
+        lines.push(el.text);
         break;
       case 'action':
         lines.push(el.text);

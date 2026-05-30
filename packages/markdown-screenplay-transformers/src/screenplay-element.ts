@@ -4,9 +4,9 @@
  * - scene-heading:       `#`  prefix  (new scene)
  * - scene-heading-sub:   `##` prefix  (continuation heading)
  * - scene-transition:    `:`  prefix
- * - dialog-character:    `>`  prefix
- * - dialog:              `>>` prefix  (regular dialog line)
- * - dialog-parenthetical:`>>` prefix  (starts with `(`)
+ * - dialog-character:    `@`  prefix
+ * - dialog:              no prefix (spelled dialogue immediately following character)
+ * - dialog-parenthetical:no prefix (starts with `(` immediately following character)
  * - action:              no prefix
  */
 export type ScreenplayElementType =

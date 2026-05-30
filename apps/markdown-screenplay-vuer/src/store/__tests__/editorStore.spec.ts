@@ -7,7 +7,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("# INT. HOUSE - DAY\n> JOHN\n>> Hello world!");
+    store.loadFromRawContent("# INT. HOUSE - DAY\n\n@JOHN\nHello world!");
 
     expect(store.elements.length).toBe(3);
     expect(store.elements[0].type).toBe("scene-heading");
@@ -32,7 +32,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("Line 1\nLine 2");
+    store.loadFromRawContent("Line 1\n\nLine 2");
     expect(store.elements.length).toBe(2);
 
     const secondElId = store.elements[1].id;
@@ -49,7 +49,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("Line 1\nLine 2\nLine 3\nLine 4");
+    store.loadFromRawContent("Line 1\n\nLine 2\n\nLine 3\n\nLine 4");
     expect(store.elements.length).toBe(4);
 
     const ids = store.elements.map((e) => e.id);
@@ -74,7 +74,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("# INT. HOUSE - DAY\nLine 1");
+    store.loadFromRawContent("# INT. HOUSE - DAY\n\nLine 1");
     expect(store.elements.length).toBe(2);
 
     // Call ensurePlaceholders (normally run by EditorContent watcher)
@@ -89,14 +89,14 @@ describe("editorStore", () => {
     expect(store.elements[3].text).toBe("");
 
     // Serialized output should strip the empty top and bottom placeholders!
-    expect(store.serializedMdsp).toBe("# INT. HOUSE - DAY\nLine 1");
+    expect(store.serializedMdsp).toBe("# INT. HOUSE - DAY\n\nLine 1");
   });
 
   it("transitions element to/from dialog-parenthetical formatting the text correctly", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("# INT. HOUSE - DAY\n> JOHN\n>> Hello");
+    store.loadFromRawContent("# INT. HOUSE - DAY\n\n@JOHN\nHello");
     expect(store.elements.length).toBe(3);
     const dialogEl = store.elements[2];
     expect(dialogEl.type).toBe("dialog");
@@ -136,7 +136,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("Line 1\nLine 2");
+    store.loadFromRawContent("Line 1\n\nLine 2");
     expect(store.undoStack.length).toBe(0);
     expect(store.redoStack.length).toBe(0);
 
@@ -195,7 +195,7 @@ describe("editorStore", () => {
     setActivePinia(createPinia());
     const store = useEditorStore();
 
-    store.loadFromRawContent("Line 1\nLine 2");
+    store.loadFromRawContent("Line 1\n\nLine 2");
     const firstId = store.elements[0].id;
 
     // Type text

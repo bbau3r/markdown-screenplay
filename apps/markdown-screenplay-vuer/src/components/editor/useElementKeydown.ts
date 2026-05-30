@@ -58,7 +58,7 @@ export function useElementKeydown(
         const offset = getCaretOffset(editorRef.value);
         const text = editorRef.value.innerText;
         const prefix = text.slice(0, offset);
-        const prefixes = ["##", "#", ">>", ">", ":"];
+        const prefixes = ["##", "#", ">>", ">", "@", ":"];
 
         if (prefixes.includes(prefix)) {
           event.preventDefault();
@@ -67,6 +67,7 @@ export function useElementKeydown(
             "#": "scene-heading",
             ">>": "dialog",
             ">": "dialog-character",
+            "@": "dialog-character",
             ":": "scene-transition",
           };
           const newType = typeMap[prefix];

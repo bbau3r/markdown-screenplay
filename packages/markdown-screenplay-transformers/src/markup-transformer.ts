@@ -1,4 +1,4 @@
-import { SceneData, TransformResult, TransformTarget } from ".";
+import type { SceneData, TransformResult, TransformTarget } from ".";
 import { YAMLParser } from "./yaml-parser";
 
 enum ScreenplayActiveType {
