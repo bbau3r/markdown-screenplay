@@ -278,4 +278,17 @@ describe("editorStore", () => {
     store.setMetadata({ title: "My Script Changed", version: "1", authors: ["Me"] });
     expect(store.undoStack.length).toBe(2); // new snapshot pushed
   });
+
+  it("parses and serializes character alias format [alias](name) correctly", () => {
+    setActivePinia(createPinia());
+    const store = useEditorStore();
+
+    store.loadFromRawContent("# INT. HOUSE - DAY\n\n[BOB](Robert) (cont'd)\nHello world!");
+
+    expect(store.elements.length).toBe(3);
+    expect(store.elements[1].type).toBe("dialog-character");
+    expect(store.elements[1].text).toBe("[BOB](Robert) (cont'd)");
+
+    expect(store.serializedMdsp).toBe("# INT. HOUSE - DAY\n\n[BOB](Robert) (cont'd)\nHello world!");
+  });
 });

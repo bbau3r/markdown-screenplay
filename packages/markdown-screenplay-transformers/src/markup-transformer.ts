@@ -63,6 +63,7 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
           this._activeType = ScreenplayActiveType.Transition;
           break;
         case line.startsWith("@"):
+        case line.startsWith("[") && line.match(/^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/) !== null:
           this._activeType = ScreenplayActiveType.Dialog_Character;
           break;
         default:

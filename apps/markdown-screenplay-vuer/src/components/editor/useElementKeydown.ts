@@ -35,8 +35,14 @@ export function useElementKeydown(
       flushDebounce();
     }
 
-    // 1. Enter key: split element
+    // 1. Enter key: split element or convert empty dialog to action
     if (event.key === "Enter" && !event.shiftKey) {
+      if (element.type === "dialog" && editorRef.value && editorRef.value.innerText.trim() === "") {
+        event.preventDefault();
+        emit("update:type", { id: element.id, type: "action" });
+        return;
+      }
+
       event.preventDefault();
       if (editorRef.value) {
         const offset = getCaretOffset(editorRef.value);
@@ -57,29 +63,35 @@ export function useElementKeydown(
       if (editorRef.value) {
         const offset = getCaretOffset(editorRef.value);
         const text = editorRef.value.innerText;
-        const prefix = text.slice(0, offset);
-        const prefixes = ["##", "#", ">>", ">", "@", ":"];
+        const prefix = text.slice(0, offset).trim();
+        const remainingText = text.slice(offset);
 
-        if (prefixes.includes(prefix)) {
+        let newType: ScreenplayElementType | null = null;
+        let newText = remainingText;
+
+        if (prefix === "##") {
+          newType = "scene-heading-sub";
+        } else if (prefix === "#") {
+          newType = "scene-heading";
+        } else if (prefix === ":") {
+          newType = "scene-transition";
+        } else if (prefix.startsWith("@")) {
+          newType = "dialog-character";
+          newText = prefix.slice(1).trim() + remainingText;
+        } else if (prefix.startsWith("[") && /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(prefix)) {
+          newType = "dialog-character";
+          newText = prefix + remainingText;
+        }
+
+        if (newType !== null) {
           event.preventDefault();
-          const typeMap: Record<string, ScreenplayElementType> = {
-            "##": "scene-heading-sub",
-            "#": "scene-heading",
-            ">>": "dialog",
-            ">": "dialog-character",
-            "@": "dialog-character",
-            ":": "scene-transition",
-          };
-          const newType = typeMap[prefix];
-          const remainingText = text.slice(offset);
-
           emit("update:type", { id: element.id, type: newType });
 
-          editorRef.value.innerText = remainingText;
+          editorRef.value.innerText = newText;
           if (options?.onUpdateLastEmittedText) {
-            options.onUpdateLastEmittedText(remainingText);
+            options.onUpdateLastEmittedText(newText);
           }
-          emit("update:text", { id: element.id, text: remainingText });
+          emit("update:text", { id: element.id, text: newText });
 
           nextTick(() => {
             if (editorRef.value) {

@@ -30,7 +30,10 @@ export class JsonTransformTarget implements TransformTarget<ScreenplayElement[]>
   }
 
   ProcessDialogCharacter(line: string): void {
-    const text = line.slice(1).trim();
+    let text = line.trim();
+    if (text.startsWith("@")) {
+      text = text.slice(1).trim();
+    }
     this._elements.push(createElement('dialog-character', text));
   }
 
