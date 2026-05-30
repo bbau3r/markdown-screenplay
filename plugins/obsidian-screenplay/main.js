@@ -45,6 +45,126 @@ function cleanBOM(str) {
   }
   return str;
 }
+function parseFrontmatterText(text) {
+  const result = {};
+  const lines = text.split(/\r?\n/);
+  if (lines.length === 0)
+    return result;
+  const firstLine = cleanBOM(lines[0].trim());
+  if (firstLine !== "---")
+    return result;
+  let endIdx = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === "---") {
+      endIdx = i;
+      break;
+    }
+  }
+  if (endIdx === -1)
+    return result;
+  let currentKey = "";
+  let inCharacters = false;
+  let currentCharacterName = "";
+  for (let i = 1; i < endIdx; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (!trimmed)
+      continue;
+    const indent = line.length - line.trimStart().length;
+    if (indent === 0) {
+      const match = trimmed.match(/^([a-zA-Z0-9_-]+)\s*:(.*)$/);
+      if (match) {
+        currentKey = match[1].trim();
+        const valuePart = match[2].trim();
+        inCharacters = currentKey === "characters";
+        if (inCharacters) {
+          result[currentKey] = {};
+        } else if (valuePart) {
+          result[currentKey] = parseScalarValue(valuePart);
+        } else {
+          result[currentKey] = null;
+        }
+        continue;
+      }
+    }
+    if (inCharacters) {
+      if (trimmed.startsWith("-")) {
+        const item = trimmed.substring(1).trim();
+        const colorMatch = item.match(/^(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s+(.+)$/);
+        if (colorMatch) {
+          const color = colorMatch[1].replace(/^['"]|['"]$/g, "");
+          const name = colorMatch[2].trim();
+          result.characters[name] = { color };
+        } else {
+          result.characters[item] = {};
+        }
+      } else {
+        const colonMatch = trimmed.match(/^([^:]+)\s*:(.*)$/);
+        if (colonMatch) {
+          const key = colonMatch[1].trim();
+          const val = colonMatch[2].trim();
+          if (indent === 2) {
+            currentCharacterName = key;
+            if (val) {
+              result.characters[currentCharacterName] = parseScalarValue(val);
+            } else {
+              result.characters[currentCharacterName] = {};
+            }
+          } else if (indent > 2 && currentCharacterName) {
+            if (key === "color") {
+              const colorVal = val.replace(/^['"]|['"]$/g, "");
+              if (typeof result.characters[currentCharacterName] !== "object") {
+                result.characters[currentCharacterName] = {};
+              }
+              result.characters[currentCharacterName].color = colorVal;
+            } else {
+              if (typeof result.characters[currentCharacterName] !== "object") {
+                result.characters[currentCharacterName] = {};
+              }
+              result.characters[currentCharacterName][key] = parseScalarValue(val);
+            }
+          }
+        }
+      }
+    } else if (currentKey) {
+      if (trimmed.startsWith("-")) {
+        if (!Array.isArray(result[currentKey])) {
+          result[currentKey] = [];
+        }
+        result[currentKey].push(parseScalarValue(trimmed.substring(1).trim()));
+      } else {
+        const match = trimmed.match(/^([^:]+)\s*:(.*)$/);
+        if (match) {
+          const subKey = match[1].trim();
+          const subVal = match[2].trim();
+          if (result[currentKey] === null || typeof result[currentKey] !== "object") {
+            result[currentKey] = {};
+          }
+          result[currentKey][subKey] = parseScalarValue(subVal);
+        }
+      }
+    }
+  }
+  return result;
+}
+function parseScalarValue(val) {
+  val = val.trim();
+  if (!val)
+    return "";
+  if (val.startsWith('"') && val.endsWith('"') || val.startsWith("'") && val.endsWith("'")) {
+    return val.slice(1, -1);
+  }
+  if (val.toLowerCase() === "true")
+    return true;
+  if (val.toLowerCase() === "false")
+    return false;
+  if (val.toLowerCase() === "null")
+    return null;
+  const num = Number(val);
+  if (!isNaN(num))
+    return num;
+  return val;
+}
 function parseCharactersFromDoc(doc) {
   const colors = /* @__PURE__ */ new Map();
   if (doc.length === 0)
@@ -354,13 +474,27 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
       logDebug(this.app, "Failed to register extensions: " + e.message);
     }
     this.registerEvent(
-      this.app.workspace.on("active-leaf-change", () => this.updateEditorClasses())
+      this.app.workspace.on("active-leaf-change", () => {
+        this.updateEditorClasses();
+        setTimeout(() => this.setupPropertiesPanel(), 200);
+      })
     );
     this.registerEvent(
-      this.app.metadataCache.on("changed", () => this.updateEditorClasses())
+      this.app.metadataCache.on("changed", () => {
+        this.updateEditorClasses();
+        if (!this.savingFrontmatter) {
+          this.setupPropertiesPanel();
+        }
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on("layout-change", () => {
+        setTimeout(() => this.setupPropertiesPanel(), 150);
+      })
     );
     this.app.workspace.onLayoutReady(() => {
       this.updateEditorClasses();
+      setTimeout(() => this.setupPropertiesPanel(), 500);
     });
     this.registerEditorExtension(this.buildEditorExtension());
     logDebug(this.app, "Editor extension registered successfully");
@@ -520,15 +654,429 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
     });
     logDebug(this.app, "Markdown post-processor registered successfully");
   }
+  // --- Properties panel state ---
+  panelObservers = [];
+  panelDebounce = null;
+  savingFrontmatter = false;
   onunload() {
     console.log("Unloading Screenplay MDSP Plugin...");
+    this.teardownPanelObservers();
     const leaves = this.app.workspace.getLeavesOfType("markdown");
     for (const leaf of leaves) {
       const view = leaf.view;
       if (view instanceof import_obsidian.MarkdownView) {
         view.contentEl.classList.remove("mdsp-enabled");
+        view.contentEl.querySelectorAll(".mdsp-props-panel").forEach((el) => el.remove());
       }
     }
+  }
+  teardownPanelObservers() {
+    for (const obs of this.panelObservers)
+      obs.disconnect();
+    this.panelObservers = [];
+  }
+  getFrontmatter(view) {
+    try {
+      const text = view.editor.getValue();
+      if (text) {
+        const fm = parseFrontmatterText(text);
+        if (fm && Object.keys(fm).length > 0) {
+          return fm;
+        }
+      }
+    } catch (e) {
+    }
+    const file = view.file;
+    if (file) {
+      const cache = this.app.metadataCache.getFileCache(file);
+      return cache?.frontmatter || {};
+    }
+    return {};
+  }
+  setupPropertiesPanel() {
+    logDebug(this.app, "setupPropertiesPanel called");
+    this.teardownPanelObservers();
+    const leaves = this.app.workspace.getLeavesOfType("markdown");
+    logDebug(this.app, `setupPropertiesPanel found ${leaves.length} markdown leaves`);
+    for (const leaf of leaves) {
+      const view = leaf.view;
+      if (!(view instanceof import_obsidian.MarkdownView)) {
+        logDebug(this.app, `Leaf view is not MarkdownView: ${view ? view.getViewType() : "null"}`);
+        continue;
+      }
+      const file = view.file;
+      logDebug(this.app, `setupPropertiesPanel file: ${file ? file.path : "null"}`);
+      if (!file || !this.isScreenplayFile(file)) {
+        logDebug(this.app, `setupPropertiesPanel file is not screenplay: ${file ? file.path : "null"}`);
+        continue;
+      }
+      const contentEl = view.contentEl;
+      const fm = this.getFrontmatter(view);
+      this.injectPropertiesPanel(contentEl, view, fm);
+      const viewContent = contentEl.querySelector(".cm-editor")?.parentElement || contentEl;
+      const observer = new MutationObserver(() => {
+        if (this.savingFrontmatter)
+          return;
+        if (this.panelDebounce)
+          clearTimeout(this.panelDebounce);
+        this.panelDebounce = setTimeout(() => {
+          const freshFm = this.getFrontmatter(view);
+          this.injectPropertiesPanel(contentEl, view, freshFm);
+        }, 120);
+      });
+      observer.observe(viewContent, { childList: true });
+      this.panelObservers.push(observer);
+    }
+  }
+  injectPropertiesPanel(contentEl, view, fm) {
+    const file = view.file;
+    if (!file)
+      return;
+    logDebug(this.app, `injectPropertiesPanel called for file: ${file.path}`);
+    const existing = contentEl.querySelector(".mdsp-props-panel");
+    if (existing) {
+      if (existing.contains(document.activeElement)) {
+        logDebug(this.app, `injectPropertiesPanel: panel exists and user is focusing/editing inside it, skipping rebuild`);
+        return;
+      }
+      logDebug(this.app, `injectPropertiesPanel: removing existing panel for rebuild`);
+      existing.remove();
+    }
+    logDebug(this.app, `injectPropertiesPanel: active frontmatter = ${JSON.stringify(fm)}`);
+    const panel = document.createElement("div");
+    panel.className = "mdsp-props-panel";
+    const hdr = document.createElement("div");
+    hdr.className = "mdsp-props-header";
+    hdr.textContent = "Properties";
+    panel.appendChild(hdr);
+    const body = document.createElement("div");
+    body.className = "mdsp-props-body";
+    panel.appendChild(body);
+    const skip = /* @__PURE__ */ new Set(["position", "cssclasses", "cssclass", "syntax", "characters", "authors"]);
+    for (const [key, value] of Object.entries(fm)) {
+      if (skip.has(key))
+        continue;
+      this.renderGenericProperty(body, view, key, value);
+    }
+    this.renderAuthorsBlock(body, view, fm.authors);
+    this.renderCharactersBlock(body, view, fm.characters);
+    const metaC = contentEl.querySelector(".metadata-container");
+    if (metaC) {
+      logDebug(this.app, `injectPropertiesPanel: found .metadata-container, inserting before it`);
+      metaC.parentElement.insertBefore(panel, metaC);
+    } else {
+      logDebug(this.app, `injectPropertiesPanel: NO .metadata-container found, prepending to contentEl`);
+      contentEl.prepend(panel);
+    }
+  }
+  renderGenericProperty(parent, view, key, value) {
+    const row = document.createElement("div");
+    row.className = "mdsp-prop-row";
+    const label = document.createElement("span");
+    label.className = "mdsp-prop-label";
+    label.textContent = key;
+    row.appendChild(label);
+    if (Array.isArray(value)) {
+      const tagsWrap = document.createElement("div");
+      tagsWrap.className = "mdsp-prop-tags";
+      for (const item of value) {
+        const tag = document.createElement("span");
+        tag.className = "mdsp-prop-tag";
+        tag.textContent = String(item);
+        tagsWrap.appendChild(tag);
+      }
+      row.appendChild(tagsWrap);
+    } else {
+      const valEl = document.createElement("span");
+      valEl.className = "mdsp-prop-value";
+      valEl.textContent = String(value ?? "");
+      valEl.contentEditable = "true";
+      valEl.spellcheck = false;
+      valEl.addEventListener("blur", () => {
+        const newVal = valEl.textContent?.trim() ?? "";
+        if (newVal !== String(value)) {
+          this.saveGenericProperty(view, key, newVal);
+        }
+      });
+      valEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          valEl.blur();
+        }
+      });
+      row.appendChild(valEl);
+    }
+    parent.appendChild(row);
+  }
+  renderAuthorsBlock(parent, view, authorsVal) {
+    const block = document.createElement("div");
+    block.className = "mdsp-authors-block";
+    const hdr = document.createElement("div");
+    hdr.className = "mdsp-authors-label";
+    hdr.textContent = "authors";
+    block.appendChild(hdr);
+    const authors = [];
+    if (Array.isArray(authorsVal)) {
+      for (const item of authorsVal) {
+        if (item)
+          authors.push(String(item));
+      }
+    } else if (typeof authorsVal === "string" && authorsVal.trim()) {
+      authors.push(authorsVal.trim());
+    }
+    const list = document.createElement("div");
+    list.className = "mdsp-authors-list";
+    block.appendChild(list);
+    const self = this;
+    const render = () => {
+      list.innerHTML = "";
+      for (let i = 0; i < authors.length; i++) {
+        const author = authors[i];
+        const row = document.createElement("div");
+        row.className = "mdsp-author-row";
+        const nameEl = document.createElement("span");
+        nameEl.className = "mdsp-author-name";
+        nameEl.textContent = author;
+        nameEl.contentEditable = "true";
+        nameEl.spellcheck = false;
+        nameEl.addEventListener("blur", () => {
+          const n = nameEl.textContent?.trim() || "";
+          if (n && n !== authors[i]) {
+            authors[i] = n;
+            self.saveAuthors(view, authors);
+          }
+        });
+        nameEl.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            nameEl.blur();
+          }
+        });
+        row.appendChild(nameEl);
+        const del = document.createElement("span");
+        del.className = "mdsp-author-del";
+        del.innerHTML = "&times;";
+        del.title = "Remove";
+        del.addEventListener("click", () => {
+          authors.splice(i, 1);
+          self.saveAuthors(view, authors);
+          render();
+        });
+        row.appendChild(del);
+        list.appendChild(row);
+      }
+      const add = document.createElement("div");
+      add.className = "mdsp-author-add-btn";
+      add.textContent = "+ Add author";
+      add.addEventListener("click", () => {
+        authors.push("NEW AUTHOR");
+        self.saveAuthors(view, authors);
+        render();
+        const last = list.querySelector(".mdsp-author-row:last-of-type .mdsp-author-name");
+        if (last) {
+          last.focus();
+          const r = document.createRange();
+          r.selectNodeContents(last);
+          const s = window.getSelection();
+          s?.removeAllRanges();
+          s?.addRange(r);
+        }
+      });
+      list.appendChild(add);
+    };
+    render();
+    parent.appendChild(block);
+  }
+  renderCharactersBlock(parent, view, charsObj) {
+    const block = document.createElement("div");
+    block.className = "mdsp-chars-block";
+    const hdr = document.createElement("div");
+    hdr.className = "mdsp-chars-label";
+    hdr.textContent = "characters";
+    block.appendChild(hdr);
+    const characters = [];
+    if (typeof charsObj === "object" && !Array.isArray(charsObj) && charsObj !== null) {
+      for (const [key, val] of Object.entries(charsObj)) {
+        if (val && typeof val === "object" && val.color) {
+          characters.push({ name: key, color: String(val.color).replace(/^['"]|['"]$/g, "") });
+        } else if (typeof val === "string") {
+          characters.push({ name: key, color: val.replace(/^['"]|['"]$/g, "") });
+        } else {
+          characters.push({ name: key, color: "" });
+        }
+      }
+    }
+    const list = document.createElement("div");
+    list.className = "mdsp-chars-list";
+    block.appendChild(list);
+    const self = this;
+    const render = () => {
+      list.innerHTML = "";
+      for (let i = 0; i < characters.length; i++) {
+        const c = characters[i];
+        const row = document.createElement("div");
+        row.className = "mdsp-char-row";
+        const bubble = document.createElement("span");
+        bubble.className = "mdsp-char-bubble";
+        if (c.color) {
+          bubble.style.backgroundColor = c.color;
+        } else {
+          bubble.classList.add("mdsp-char-bubble-empty");
+        }
+        const picker = document.createElement("input");
+        picker.type = "color";
+        picker.className = "mdsp-char-picker";
+        let hex6 = "#808080";
+        if (c.color?.startsWith("#"))
+          hex6 = c.color.length >= 7 ? c.color.slice(0, 7) : c.color;
+        picker.value = hex6;
+        bubble.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          picker.click();
+        });
+        picker.addEventListener("input", () => {
+          bubble.style.backgroundColor = picker.value + (c.color?.length === 9 ? c.color.slice(7) : "7D");
+        });
+        picker.addEventListener("change", () => {
+          let alpha = "7D";
+          if (c.color?.startsWith("#") && c.color.length === 9)
+            alpha = c.color.slice(7);
+          characters[i].color = picker.value + alpha;
+          self.saveCharacters(view, characters);
+          bubble.style.backgroundColor = characters[i].color;
+          bubble.classList.remove("mdsp-char-bubble-empty");
+        });
+        row.appendChild(bubble);
+        row.appendChild(picker);
+        const nameEl = document.createElement("span");
+        nameEl.className = "mdsp-char-name";
+        nameEl.textContent = c.name;
+        nameEl.contentEditable = "true";
+        nameEl.spellcheck = false;
+        nameEl.addEventListener("blur", () => {
+          const n = nameEl.textContent?.trim() || "";
+          if (n && n !== c.name) {
+            characters[i].name = n;
+            self.saveCharacters(view, characters);
+          }
+        });
+        nameEl.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            nameEl.blur();
+          }
+        });
+        row.appendChild(nameEl);
+        const del = document.createElement("span");
+        del.className = "mdsp-char-del";
+        del.innerHTML = "&times;";
+        del.title = "Remove";
+        del.addEventListener("click", () => {
+          characters.splice(i, 1);
+          self.saveCharacters(view, characters);
+          render();
+        });
+        row.appendChild(del);
+        list.appendChild(row);
+      }
+      const add = document.createElement("div");
+      add.className = "mdsp-char-add-btn";
+      add.textContent = "+ Add character";
+      add.addEventListener("click", () => {
+        characters.push({ name: "NEW CHARACTER", color: "" });
+        self.saveCharacters(view, characters);
+        render();
+        const last = list.querySelector(".mdsp-char-row:last-of-type .mdsp-char-name");
+        if (last) {
+          last.focus();
+          const r = document.createRange();
+          r.selectNodeContents(last);
+          const s = window.getSelection();
+          s?.removeAllRanges();
+          s?.addRange(r);
+        }
+      });
+      list.appendChild(add);
+    };
+    render();
+    parent.appendChild(block);
+  }
+  saveFrontmatterToEditor(view, fm) {
+    try {
+      const docText = view.editor.getValue();
+      const lines = docText.split(/\r?\n/);
+      let startIdx = -1;
+      let endIdx = -1;
+      if (lines.length > 0 && cleanBOM(lines[0].trim()) === "---") {
+        startIdx = 0;
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i].trim() === "---") {
+            endIdx = i;
+            break;
+          }
+        }
+      }
+      const yamlLines = ["---"];
+      for (const [key, value] of Object.entries(fm)) {
+        if (key === "characters") {
+          yamlLines.push("characters:");
+          if (value && typeof value === "object") {
+            for (const [charName, charInfo] of Object.entries(value)) {
+              if (charInfo && typeof charInfo === "object" && charInfo.color) {
+                yamlLines.push(`  ${charName}:`);
+                yamlLines.push(`    color: "${charInfo.color}"`);
+              } else if (typeof charInfo === "string") {
+                yamlLines.push(`  ${charName}: "${charInfo}"`);
+              } else {
+                yamlLines.push(`  ${charName}:`);
+              }
+            }
+          }
+        } else if (key === "authors") {
+          yamlLines.push("authors:");
+          if (Array.isArray(value)) {
+            for (const author of value) {
+              yamlLines.push(`  - ${author}`);
+            }
+          }
+        } else {
+          if (typeof value === "string") {
+            yamlLines.push(`${key}: "${value}"`);
+          } else {
+            yamlLines.push(`${key}: ${value}`);
+          }
+        }
+      }
+      yamlLines.push("---");
+      const newFrontmatterText = yamlLines.join("\n");
+      if (startIdx !== -1 && endIdx !== -1) {
+        view.editor.replaceRange(newFrontmatterText + "\n", { line: 0, ch: 0 }, { line: endIdx + 1, ch: 0 });
+      } else {
+        view.editor.replaceRange(newFrontmatterText + "\n\n", { line: 0, ch: 0 });
+      }
+    } catch (e) {
+      console.error("Failed to save frontmatter to editor:", e);
+    }
+  }
+  saveGenericProperty(view, key, newValue) {
+    const fm = this.getFrontmatter(view);
+    fm[key] = newValue;
+    this.saveFrontmatterToEditor(view, fm);
+  }
+  saveCharacters(view, characters) {
+    const fm = this.getFrontmatter(view);
+    const obj = {};
+    for (const c of characters) {
+      obj[c.name] = c.color ? { color: c.color } : {};
+    }
+    fm.characters = obj;
+    this.saveFrontmatterToEditor(view, fm);
+  }
+  saveAuthors(view, authors) {
+    const fm = this.getFrontmatter(view);
+    fm.authors = authors;
+    this.saveFrontmatterToEditor(view, fm);
   }
   isScreenplayFile(file) {
     if (!file)

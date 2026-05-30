@@ -171,3 +171,297 @@
 .cm-mdsp-property-value {
   color: var(--text-normal) !important;
 }
+
+/* ========================================================================= */
+/* CUSTOM PROPERTIES PANEL                                                   */
+/* ========================================================================= */
+
+/* Hide the entire native Obsidian Properties panel on screenplay files */
+.mdsp-enabled .metadata-container {
+  display: none !important;
+}
+
+/* ── Panel shell ── */
+.mdsp-props-panel {
+  margin: 12px 16px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-secondary);
+  overflow: hidden;
+}
+
+.mdsp-props-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 10px 16px 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.mdsp-props-body {
+  padding: 4px 0;
+}
+
+/* ── Generic property rows ── */
+.mdsp-prop-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 16px;
+  min-height: 28px;
+}
+
+.mdsp-prop-label {
+  flex-shrink: 0;
+  width: 80px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: lowercase;
+}
+
+.mdsp-prop-value {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-normal);
+  outline: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: text;
+  transition: background 0.15s ease;
+}
+
+.mdsp-prop-value:focus {
+  background: var(--background-modifier-form-field);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+/* Array values rendered as inline tags */
+.mdsp-prop-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+
+.mdsp-prop-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* ── Authors block ── */
+.mdsp-authors-block {
+  border-top: 1px solid var(--background-modifier-border);
+  padding: 6px 0 4px;
+}
+
+.mdsp-authors-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: lowercase;
+  padding: 0 16px 4px;
+}
+
+.mdsp-authors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 8px;
+}
+
+.mdsp-author-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.mdsp-author-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.mdsp-author-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-normal);
+  outline: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: text;
+  transition: background 0.15s ease;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.mdsp-author-name:focus {
+  background: var(--background-modifier-form-field);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.mdsp-author-del {
+  cursor: pointer;
+  opacity: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-muted);
+  padding: 0 4px;
+  transition: opacity 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.mdsp-author-row:hover .mdsp-author-del {
+  opacity: 0.5;
+}
+
+.mdsp-author-del:hover {
+  opacity: 1 !important;
+  color: var(--text-error) !important;
+}
+
+.mdsp-author-add-btn {
+  cursor: pointer;
+  padding: 5px 10px;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
+  user-select: none;
+}
+
+.mdsp-author-add-btn:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+/* ── Characters block ── */
+.mdsp-chars-block {
+  border-top: 1px solid var(--background-modifier-border);
+  padding: 6px 0 4px;
+}
+
+.mdsp-chars-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: lowercase;
+  padding: 0 16px 4px;
+}
+
+.mdsp-chars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 8px;
+}
+
+.mdsp-char-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.mdsp-char-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.mdsp-char-bubble {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.mdsp-char-bubble:hover {
+  transform: scale(1.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.mdsp-char-bubble-empty {
+  background-color: transparent !important;
+  border: 1.5px dashed var(--text-muted) !important;
+  opacity: 0.5;
+}
+
+.mdsp-char-picker {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.mdsp-char-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-normal);
+  outline: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: text;
+  transition: background 0.15s ease;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.mdsp-char-name:focus {
+  background: var(--background-modifier-form-field);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.mdsp-char-del {
+  cursor: pointer;
+  opacity: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-muted);
+  padding: 0 4px;
+  transition: opacity 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.mdsp-char-row:hover .mdsp-char-del {
+  opacity: 0.5;
+}
+
+.mdsp-char-del:hover {
+  opacity: 1 !important;
+  color: var(--text-error) !important;
+}
+
+.mdsp-char-add-btn {
+  cursor: pointer;
+  padding: 5px 10px;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
+  user-select: none;
+}
+
+.mdsp-char-add-btn:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
