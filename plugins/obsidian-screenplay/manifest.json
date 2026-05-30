@@ -1,10 +1,10 @@
 {
   "id": "obsidian-screenplay-mdsp",
-  "name": "Obsidian Screenplay MDSP",
+  "name": "Markdown Screenplay",
   "version": "1.0.0",
   "minAppVersion": "0.15.0",
   "description": "Syntax highlighting and editing support for screenplay notes using the MDSP syntax",
-  "author": "Antigravity",
-  "authorUrl": "https://github.com/bbau3r/m-screend",
+  "author": "bbau3r",
+  "authorUrl": "https://github.com/bbau3r/markdown-screenplay",
   "isDesktopOnly": false
 }
