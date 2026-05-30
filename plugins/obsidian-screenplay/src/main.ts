@@ -3,10 +3,7 @@ import { RangeSetBuilder, Text } from "@codemirror/state";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from "@codemirror/view";
 
 function logDebug(app: App, msg: string) {
-  try {
-    const timestamp = new Date().toISOString();
-    app.vault.adapter.append("screenplay-debug.log", `[${timestamp}] ${msg}\n`);
-  } catch (e) { }
+  console.debug(`[Screenplay Debug] ${msg}`);
 }
 
 function cleanBOM(str: string): string {
@@ -701,8 +698,14 @@ export default class ScreenplayPlugin extends Plugin {
 
   // --- Properties panel state ---
   private panelObservers: MutationObserver[] = [];
-  private panelDebounce: ReturnType<typeof setTimeout> | null = null;
+  private panelDebounces = new Map<string, ReturnType<typeof setTimeout>>();
   private savingFrontmatter = false;
+
+  // --- Frontmatter cache for editor decorations ---
+  lastFrontmatterText = "";
+  cachedColors = new Map<string, string>();
+  cachedEndFrontmatterLine = -1;
+  cachedCharRange = { start: -1, end: -1 };
 
   onunload() {
     console.log("Unloading Screenplay MDSP Plugin...");
@@ -765,15 +768,43 @@ export default class ScreenplayPlugin extends Plugin {
       const fm = this.getFrontmatter(view);
       this.injectPropertiesPanel(contentEl, view, fm);
 
+      const filePath = file.path;
       // Observe so we re-inject after Obsidian rebuilds DOM
       const viewContent = contentEl.querySelector('.cm-editor')?.parentElement || contentEl;
-      const observer = new MutationObserver(() => {
+      const observer = new MutationObserver((mutations) => {
         if (this.savingFrontmatter) return;
-        if (this.panelDebounce) clearTimeout(this.panelDebounce);
-        this.panelDebounce = setTimeout(() => {
+
+        // Skip if the mutations are only adding/removing the properties panel itself
+        let onlyOurPanel = true;
+        for (let i = 0; i < mutations.length; i++) {
+          const mutation = mutations[i];
+          for (let j = 0; j < mutation.addedNodes.length; j++) {
+            const node = mutation.addedNodes[j] as HTMLElement;
+            if (!node.classList || !node.classList.contains('mdsp-props-panel')) {
+              onlyOurPanel = false;
+              break;
+            }
+          }
+          for (let j = 0; j < mutation.removedNodes.length; j++) {
+            const node = mutation.removedNodes[j] as HTMLElement;
+            if (!node.classList || !node.classList.contains('mdsp-props-panel')) {
+              onlyOurPanel = false;
+              break;
+            }
+          }
+          if (!onlyOurPanel) break;
+        }
+        if (onlyOurPanel) return;
+
+        const existingDebounce = this.panelDebounces.get(filePath);
+        if (existingDebounce) clearTimeout(existingDebounce);
+
+        const timeout = setTimeout(() => {
+          this.panelDebounces.delete(filePath);
           const freshFm = this.getFrontmatter(view);
           this.injectPropertiesPanel(contentEl, view, freshFm);
         }, 120);
+        this.panelDebounces.set(filePath, timeout);
       });
       observer.observe(viewContent, { childList: true });
       this.panelObservers.push(observer);
@@ -785,8 +816,14 @@ export default class ScreenplayPlugin extends Plugin {
     if (!file) return;
 
     logDebug(this.app, `injectPropertiesPanel called for file: ${file.path}`);
-    const existing = contentEl.querySelector('.mdsp-props-panel');
+    const existing = contentEl.querySelector('.mdsp-props-panel') as HTMLElement;
     if (existing) {
+      const existingFm = existing.dataset.fm;
+      const currentFmStr = JSON.stringify(fm);
+      if (existingFm === currentFmStr) {
+        logDebug(this.app, `injectPropertiesPanel: frontmatter is identical, skipping rebuild`);
+        return;
+      }
       if (existing.contains(document.activeElement)) {
         logDebug(this.app, `injectPropertiesPanel: panel exists and user is focusing/editing inside it, skipping rebuild`);
         return;
@@ -799,6 +836,7 @@ export default class ScreenplayPlugin extends Plugin {
 
     const panel = document.createElement('div');
     panel.className = 'mdsp-props-panel';
+    panel.dataset.fm = JSON.stringify(fm);
 
     const hdr = document.createElement('div');
     hdr.className = 'mdsp-props-header';
@@ -829,6 +867,15 @@ export default class ScreenplayPlugin extends Plugin {
     } else {
       logDebug(this.app, `injectPropertiesPanel: NO .metadata-container found, prepending to contentEl`);
       contentEl.prepend(panel);
+    }
+
+    // Request CodeMirror to re-measure layout since we modified the properties panel height above it
+    const editorView = (view as any).editor?.cm as EditorView;
+    if (editorView && typeof editorView.requestMeasure === "function") {
+      setTimeout(() => {
+        editorView.requestMeasure();
+        logDebug(this.app, "Triggered requestMeasure after properties panel injection");
+      }, 50);
     }
   }
 
@@ -1249,12 +1296,40 @@ export default class ScreenplayPlugin extends Plugin {
                 return Decoration.none;
               }
 
-              // 2. Parse character colors from document text
-              const colors = parseCharactersFromDoc(view.state.doc);
-              logDebug(pluginInstance.app, `Parsed character colors count=${colors.size}`);
-              const endFrontmatterLine = getEndFrontmatterLine(view.state.doc);
-              const charRange = getCharactersBlockRange(view.state.doc);
-              logDebug(pluginInstance.app, `charRange start=${charRange.start}, end=${charRange.end}`);
+              // 2. Parse/extract frontmatter and character colors with caching
+              const doc = view.state.doc;
+              let currentFrontmatterText = "";
+              try {
+                let endFM = -1;
+                const maxLines = Math.min(doc.lines, 100);
+                if (doc.lines > 0 && cleanBOM(doc.line(1).text.trim()) === "---") {
+                  for (let i = 2; i <= maxLines; i++) {
+                    if (doc.line(i).text.trim() === "---") {
+                      endFM = i;
+                      break;
+                    }
+                  }
+                }
+                if (endFM !== -1) {
+                  const linesArr: string[] = [];
+                  for (let i = 1; i <= endFM; i++) {
+                    linesArr.push(doc.line(i).text);
+                  }
+                  currentFrontmatterText = linesArr.join("\n");
+                }
+              } catch (e) {}
+
+              if (currentFrontmatterText !== pluginInstance.lastFrontmatterText) {
+                pluginInstance.lastFrontmatterText = currentFrontmatterText;
+                pluginInstance.cachedColors = parseCharactersFromDoc(doc);
+                pluginInstance.cachedEndFrontmatterLine = getEndFrontmatterLine(doc);
+                pluginInstance.cachedCharRange = getCharactersBlockRange(doc);
+                logDebug(pluginInstance.app, `Frontmatter text changed, re-parsed frontmatter cache. Colors count=${pluginInstance.cachedColors.size}`);
+              }
+
+              const colors = pluginInstance.cachedColors;
+              const endFrontmatterLine = pluginInstance.cachedEndFrontmatterLine;
+              const charRange = pluginInstance.cachedCharRange;
 
               const builder = new RangeSetBuilder<Decoration>();
 
@@ -1285,9 +1360,15 @@ export default class ScreenplayPlugin extends Plugin {
                     );
 
                     const isLineInCharacters = charRange.start !== -1 && charRange.end !== -1 && l >= charRange.start && l <= charRange.end;
-                    const isCursorOnLine = view.state.selection.ranges.some(
-                      r => r.from >= line.from && r.to <= line.to
-                    );
+                    const isCursorOnLine = view.state.selection.ranges.some(r => {
+                      try {
+                        const fromLine = view.state.doc.lineAt(r.from).number;
+                        const toLine = view.state.doc.lineAt(r.to).number;
+                        return fromLine === toLine && fromLine === l;
+                      } catch (e) {
+                        return false;
+                      }
+                    });
 
                     if (isLineInCharacters) {
                       const colorMatch = text.match(/#([a-fA-F0-9]{3,8})/);
@@ -1303,9 +1384,7 @@ export default class ScreenplayPlugin extends Plugin {
                           builder.add(
                             line.from,
                             line.from + prefixLen + colorLen + 1,
-                            Decoration.mark({
-                              class: "cm-mdsp-syntax-hidden"
-                            })
+                            Decoration.replace({})
                           );
                         }
 
@@ -1363,9 +1442,7 @@ export default class ScreenplayPlugin extends Plugin {
                           builder.add(
                             line.from + colonIndex,
                             line.to,
-                            Decoration.mark({
-                              class: "cm-mdsp-syntax-hidden"
-                            })
+                            Decoration.replace({})
                           );
                         } else {
                           builder.add(
@@ -1390,9 +1467,7 @@ export default class ScreenplayPlugin extends Plugin {
                             builder.add(
                               line.from,
                               line.from + prefixLen,
-                              Decoration.mark({
-                                class: "cm-mdsp-syntax-hidden"
-                              })
+                              Decoration.replace({})
                             );
                           }
 
@@ -1447,9 +1522,7 @@ export default class ScreenplayPlugin extends Plugin {
                             builder.add(
                               line.from + colonIndex,
                               line.to,
-                              Decoration.mark({
-                                class: "cm-mdsp-syntax-hidden"
-                              })
+                              Decoration.replace({})
                             );
                           }
                           continue;
@@ -1527,9 +1600,15 @@ export default class ScreenplayPlugin extends Plugin {
                     );
 
                     // Check if cursor is on this line to dynamically hide prefix formatting characters
-                    const isCursorOnLine = view.state.selection.ranges.some(
-                      r => r.from >= line.from && r.to <= line.to
-                    );
+                     const isCursorOnLine = view.state.selection.ranges.some(r => {
+                       try {
+                         const fromLine = view.state.doc.lineAt(r.from).number;
+                         const toLine = view.state.doc.lineAt(r.to).number;
+                         return fromLine === toLine && fromLine === l;
+                       } catch (e) {
+                         return false;
+                       }
+                     });
 
                     if (!isCursorOnLine) {
                       let hideLen = 0;
@@ -1548,9 +1627,7 @@ export default class ScreenplayPlugin extends Plugin {
                         builder.add(
                           line.from,
                           line.from + hideLen,
-                          Decoration.mark({
-                            class: "cm-mdsp-syntax-hidden"
-                          })
+                          Decoration.replace({})
                         );
                       }
                     }
@@ -1591,9 +1668,15 @@ export default class ScreenplayPlugin extends Plugin {
                       const color = colors.get(lowerName);
                       if (color) {
                         // Determine if cursor is on this specific character match range
-                        const isCursorOnMatch = view.state.selection.ranges.some(
-                          r => r.from <= matchEnd && r.to >= matchStart
-                        );
+                         const isCursorOnMatch = view.state.selection.ranges.some(r => {
+                           try {
+                             const fromLine = view.state.doc.lineAt(r.from).number;
+                             const toLine = view.state.doc.lineAt(r.to).number;
+                             return fromLine === toLine && r.from <= matchEnd && r.to >= matchStart;
+                           } catch (e) {
+                             return false;
+                           }
+                         });
 
                         // Only highlight and hide syntax if the cursor is NOT on the match range (i.e. editing is not active)
                         if (!isCursorOnMatch) {
@@ -1602,9 +1685,7 @@ export default class ScreenplayPlugin extends Plugin {
                             builder.add(
                               matchStart,
                               matchStart + prefixLen,
-                              Decoration.mark({
-                                class: "cm-mdsp-syntax-hidden"
-                              })
+                              Decoration.replace({})
                             );
                           }
 
@@ -1625,9 +1706,7 @@ export default class ScreenplayPlugin extends Plugin {
                             builder.add(
                               matchEnd - suffixLen,
                               matchEnd,
-                              Decoration.mark({
-                                class: "cm-mdsp-syntax-hidden"
-                              })
+                              Decoration.replace({})
                             );
                           }
                         } else {
@@ -1660,8 +1739,8 @@ export default class ScreenplayPlugin extends Plugin {
         }
       ),
       EditorView.domEventHandlers({
-        click(event, view) {
-          const colors = parseCharactersFromDoc(view.state.doc);
+         click(event, view) {
+           const colors = pluginInstance.cachedColors;
           const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
           if (pos !== null && isPosInCharacterMatch(pos, view.state.doc, colors)) {
             event.preventDefault();

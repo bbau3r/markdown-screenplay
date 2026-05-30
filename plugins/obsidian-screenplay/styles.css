@@ -55,8 +55,10 @@
   text-align: center !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
-  margin-top: 1.2em !important;
-  margin-bottom: 0.2em !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 1.2em !important;
+  padding-bottom: 0.2em !important;
 }
 
 /* Dialogue Parentheticals */
@@ -65,11 +67,14 @@
   font-size: 17px !important;
   text-align: left !important;
   font-style: italic !important;
-  margin-top: 0.2em !important;
-  margin-bottom: 0.2em !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
   margin-left: 30% !important;
   margin-right: 20% !important;
-  padding: 0 !important;
+  padding-top: 0.2em !important;
+  padding-bottom: 0.2em !important;
+  padding-left: 0.1em !important;
+  padding-right: 0 !important;
 }
 
 /* Dialogue blocks */
@@ -77,11 +82,13 @@
 .mdsp-enabled .cm-line.cm-activeLine.cm-mdsp-dialog {
   font-size: 17px !important;
   text-align: left !important;
-  margin-top: 0.2em !important;
-  margin-bottom: 0.5em !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
   margin-left: 20% !important;
   margin-right: 20% !important;
-  padding-left: 0 !important;
+  padding-top: 0.2em !important;
+  padding-bottom: 0.5em !important;
+  padding-left: 0.1em !important;
 }
 
 /* Scene Headings */
@@ -90,8 +97,10 @@
   font-size: 17px !important;
   font-weight: 800 !important;
   text-transform: uppercase !important;
-  margin-top: 1.5em !important;
-  margin-bottom: 0.5em !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 1.5em !important;
+  padding-bottom: 0.5em !important;
 }
 
 /* Scene Transitions */
@@ -99,8 +108,10 @@
   font-size: 17px !important;
   text-align: right !important;
   text-transform: uppercase !important;
-  margin-top: 1em !important;
-  margin-bottom: 1em !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 1em !important;
+  padding-bottom: 1em !important;
   padding-right: 10% !important;
 }
 
@@ -111,8 +122,10 @@
 /* Action Blocks */
 .mdsp-enabled .cm-line.cm-mdsp-action {
   font-size: 17px !important;
-  margin-top: 0.8em !important;
-  margin-bottom: 0.8em !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0.8em !important;
+  padding-bottom: 0.8em !important;
 }
 
 /* Hide markdown screenplay prefix formatting characters when cursor is not on the line */
@@ -314,7 +327,9 @@
   line-height: 1;
   color: var(--text-muted);
   padding: 0 4px;
-  transition: opacity 0.15s ease, color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
   flex-shrink: 0;
 }
 
@@ -334,7 +349,9 @@
   color: var(--text-muted);
   font-size: 12px;
   border-radius: 6px;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
   user-select: none;
 }
 
@@ -386,7 +403,9 @@
   flex-shrink: 0;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
 }
 
 .mdsp-char-bubble:hover {
@@ -436,7 +455,9 @@
   line-height: 1;
   color: var(--text-muted);
   padding: 0 4px;
-  transition: opacity 0.15s ease, color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
   flex-shrink: 0;
 }
 
@@ -456,7 +477,9 @@
   color: var(--text-muted);
   font-size: 12px;
   border-radius: 6px;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
   user-select: none;
 }
 
@@ -464,4 +487,3 @@
   color: var(--text-normal);
   background: var(--background-modifier-hover);
 }
-

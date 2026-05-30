@@ -32,12 +32,7 @@ var import_obsidian = require("obsidian");
 var import_state = require("@codemirror/state");
 var import_view = require("@codemirror/view");
 function logDebug(app, msg) {
-  try {
-    const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-    app.vault.adapter.append("screenplay-debug.log", `[${timestamp}] ${msg}
-`);
-  } catch (e) {
-  }
+  console.debug(`[Screenplay Debug] ${msg}`);
 }
 function cleanBOM(str) {
   if (str && str.charCodeAt(0) === 65279) {
@@ -656,8 +651,13 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
   }
   // --- Properties panel state ---
   panelObservers = [];
-  panelDebounce = null;
+  panelDebounces = /* @__PURE__ */ new Map();
   savingFrontmatter = false;
+  // --- Frontmatter cache for editor decorations ---
+  lastFrontmatterText = "";
+  cachedColors = /* @__PURE__ */ new Map();
+  cachedEndFrontmatterLine = -1;
+  cachedCharRange = { start: -1, end: -1 };
   onunload() {
     console.log("Unloading Screenplay MDSP Plugin...");
     this.teardownPanelObservers();
@@ -713,16 +713,42 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
       const contentEl = view.contentEl;
       const fm = this.getFrontmatter(view);
       this.injectPropertiesPanel(contentEl, view, fm);
+      const filePath = file.path;
       const viewContent = contentEl.querySelector(".cm-editor")?.parentElement || contentEl;
-      const observer = new MutationObserver(() => {
+      const observer = new MutationObserver((mutations) => {
         if (this.savingFrontmatter)
           return;
-        if (this.panelDebounce)
-          clearTimeout(this.panelDebounce);
-        this.panelDebounce = setTimeout(() => {
+        let onlyOurPanel = true;
+        for (let i = 0; i < mutations.length; i++) {
+          const mutation = mutations[i];
+          for (let j = 0; j < mutation.addedNodes.length; j++) {
+            const node = mutation.addedNodes[j];
+            if (!node.classList || !node.classList.contains("mdsp-props-panel")) {
+              onlyOurPanel = false;
+              break;
+            }
+          }
+          for (let j = 0; j < mutation.removedNodes.length; j++) {
+            const node = mutation.removedNodes[j];
+            if (!node.classList || !node.classList.contains("mdsp-props-panel")) {
+              onlyOurPanel = false;
+              break;
+            }
+          }
+          if (!onlyOurPanel)
+            break;
+        }
+        if (onlyOurPanel)
+          return;
+        const existingDebounce = this.panelDebounces.get(filePath);
+        if (existingDebounce)
+          clearTimeout(existingDebounce);
+        const timeout = setTimeout(() => {
+          this.panelDebounces.delete(filePath);
           const freshFm = this.getFrontmatter(view);
           this.injectPropertiesPanel(contentEl, view, freshFm);
         }, 120);
+        this.panelDebounces.set(filePath, timeout);
       });
       observer.observe(viewContent, { childList: true });
       this.panelObservers.push(observer);
@@ -735,6 +761,12 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
     logDebug(this.app, `injectPropertiesPanel called for file: ${file.path}`);
     const existing = contentEl.querySelector(".mdsp-props-panel");
     if (existing) {
+      const existingFm = existing.dataset.fm;
+      const currentFmStr = JSON.stringify(fm);
+      if (existingFm === currentFmStr) {
+        logDebug(this.app, `injectPropertiesPanel: frontmatter is identical, skipping rebuild`);
+        return;
+      }
       if (existing.contains(document.activeElement)) {
         logDebug(this.app, `injectPropertiesPanel: panel exists and user is focusing/editing inside it, skipping rebuild`);
         return;
@@ -745,6 +777,7 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
     logDebug(this.app, `injectPropertiesPanel: active frontmatter = ${JSON.stringify(fm)}`);
     const panel = document.createElement("div");
     panel.className = "mdsp-props-panel";
+    panel.dataset.fm = JSON.stringify(fm);
     const hdr = document.createElement("div");
     hdr.className = "mdsp-props-header";
     hdr.textContent = "Properties";
@@ -767,6 +800,13 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
     } else {
       logDebug(this.app, `injectPropertiesPanel: NO .metadata-container found, prepending to contentEl`);
       contentEl.prepend(panel);
+    }
+    const editorView = view.editor?.cm;
+    if (editorView && typeof editorView.requestMeasure === "function") {
+      setTimeout(() => {
+        editorView.requestMeasure();
+        logDebug(this.app, "Triggered requestMeasure after properties panel injection");
+      }, 50);
     }
   }
   renderGenericProperty(parent, view, key, value) {
@@ -1153,11 +1193,38 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
               if (!isMdsp) {
                 return import_view.Decoration.none;
               }
-              const colors = parseCharactersFromDoc(view.state.doc);
-              logDebug(pluginInstance.app, `Parsed character colors count=${colors.size}`);
-              const endFrontmatterLine = getEndFrontmatterLine(view.state.doc);
-              const charRange = getCharactersBlockRange(view.state.doc);
-              logDebug(pluginInstance.app, `charRange start=${charRange.start}, end=${charRange.end}`);
+              const doc = view.state.doc;
+              let currentFrontmatterText = "";
+              try {
+                let endFM = -1;
+                const maxLines = Math.min(doc.lines, 100);
+                if (doc.lines > 0 && cleanBOM(doc.line(1).text.trim()) === "---") {
+                  for (let i = 2; i <= maxLines; i++) {
+                    if (doc.line(i).text.trim() === "---") {
+                      endFM = i;
+                      break;
+                    }
+                  }
+                }
+                if (endFM !== -1) {
+                  const linesArr = [];
+                  for (let i = 1; i <= endFM; i++) {
+                    linesArr.push(doc.line(i).text);
+                  }
+                  currentFrontmatterText = linesArr.join("\n");
+                }
+              } catch (e) {
+              }
+              if (currentFrontmatterText !== pluginInstance.lastFrontmatterText) {
+                pluginInstance.lastFrontmatterText = currentFrontmatterText;
+                pluginInstance.cachedColors = parseCharactersFromDoc(doc);
+                pluginInstance.cachedEndFrontmatterLine = getEndFrontmatterLine(doc);
+                pluginInstance.cachedCharRange = getCharactersBlockRange(doc);
+                logDebug(pluginInstance.app, `Frontmatter text changed, re-parsed frontmatter cache. Colors count=${pluginInstance.cachedColors.size}`);
+              }
+              const colors = pluginInstance.cachedColors;
+              const endFrontmatterLine = pluginInstance.cachedEndFrontmatterLine;
+              const charRange = pluginInstance.cachedCharRange;
               const builder = new import_state.RangeSetBuilder();
               for (const { from, to } of view.visibleRanges) {
                 const startLine = view.state.doc.lineAt(from).number;
@@ -1180,9 +1247,15 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
                       })
                     );
                     const isLineInCharacters = charRange.start !== -1 && charRange.end !== -1 && l >= charRange.start && l <= charRange.end;
-                    const isCursorOnLine = view.state.selection.ranges.some(
-                      (r) => r.from >= line.from && r.to <= line.to
-                    );
+                    const isCursorOnLine = view.state.selection.ranges.some((r) => {
+                      try {
+                        const fromLine = view.state.doc.lineAt(r.from).number;
+                        const toLine = view.state.doc.lineAt(r.to).number;
+                        return fromLine === toLine && fromLine === l;
+                      } catch (e) {
+                        return false;
+                      }
+                    });
                     if (isLineInCharacters) {
                       const colorMatch = text.match(/#([a-fA-F0-9]{3,8})/);
                       const charListMatch = text.match(/^(\s*-\s*)(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s+(.+)$/);
@@ -1193,9 +1266,7 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
                           builder.add(
                             line.from,
                             line.from + prefixLen + colorLen + 1,
-                            import_view.Decoration.mark({
-                              class: "cm-mdsp-syntax-hidden"
-                            })
+                            import_view.Decoration.replace({})
                           );
                         }
                         if (colorMatch) {
@@ -1245,9 +1316,7 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
                           builder.add(
                             line.from + colonIndex,
                             line.to,
-                            import_view.Decoration.mark({
-                              class: "cm-mdsp-syntax-hidden"
-                            })
+                            import_view.Decoration.replace({})
                           );
                         } else {
                           builder.add(
@@ -1269,9 +1338,7 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
                             builder.add(
                               line.from,
                               line.from + prefixLen,
-                              import_view.Decoration.mark({
-                                class: "cm-mdsp-syntax-hidden"
-                              })
+                              import_view.Decoration.replace({})
                             );
                           }
                           builder.add(
@@ -1318,9 +1385,7 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
                             builder.add(
                               line.from + colonIndex,
                               line.to,
-                              import_view.Decoration.mark({
-                                class: "cm-mdsp-syntax-hidden"
-                              })
+                              import_view.Decoration.replace({})
                             );
                           }
                           continue;
@@ -1389,9 +1454,15 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
                         attributes: { class: lineClass }
                       })
                     );
-                    const isCursorOnLine = view.state.selection.ranges.some(
-                      (r) => r.from >= line.from && r.to <= line.to
-                    );
+                    const isCursorOnLine = view.state.selection.ranges.some((r) => {
+                      try {
+                        const fromLine = view.state.doc.lineAt(r.from).number;
+                        const toLine = view.state.doc.lineAt(r.to).number;
+                        return fromLine === toLine && fromLine === l;
+                      } catch (e) {
+                        return false;
+                      }
+                    });
                     if (!isCursorOnLine) {
                       let hideLen = 0;
                       if (text.startsWith("## "))
@@ -1418,9 +1489,7 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
                         builder.add(
                           line.from,
                           line.from + hideLen,
-                          import_view.Decoration.mark({
-                            class: "cm-mdsp-syntax-hidden"
-                          })
+                          import_view.Decoration.replace({})
                         );
                       }
                     }
@@ -1452,17 +1521,21 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
                       const lowerName = characterName.trim().toLowerCase();
                       const color = colors.get(lowerName);
                       if (color) {
-                        const isCursorOnMatch = view.state.selection.ranges.some(
-                          (r) => r.from <= matchEnd && r.to >= matchStart
-                        );
+                        const isCursorOnMatch = view.state.selection.ranges.some((r) => {
+                          try {
+                            const fromLine = view.state.doc.lineAt(r.from).number;
+                            const toLine = view.state.doc.lineAt(r.to).number;
+                            return fromLine === toLine && r.from <= matchEnd && r.to >= matchStart;
+                          } catch (e) {
+                            return false;
+                          }
+                        });
                         if (!isCursorOnMatch) {
                           if (prefixLen > 0) {
                             builder.add(
                               matchStart,
                               matchStart + prefixLen,
-                              import_view.Decoration.mark({
-                                class: "cm-mdsp-syntax-hidden"
-                              })
+                              import_view.Decoration.replace({})
                             );
                           }
                           builder.add(
@@ -1479,9 +1552,7 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
                             builder.add(
                               matchEnd - suffixLen,
                               matchEnd,
-                              import_view.Decoration.mark({
-                                class: "cm-mdsp-syntax-hidden"
-                              })
+                              import_view.Decoration.replace({})
                             );
                           }
                         } else {
@@ -1514,7 +1585,7 @@ Stack: ${err.stack}`);
       ),
       import_view.EditorView.domEventHandlers({
         click(event, view) {
-          const colors = parseCharactersFromDoc(view.state.doc);
+          const colors = pluginInstance.cachedColors;
           const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
           if (pos !== null && isPosInCharacterMatch(pos, view.state.doc, colors)) {
             event.preventDefault();
