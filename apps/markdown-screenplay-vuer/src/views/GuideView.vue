@@ -1,5 +1,4 @@
-<script setup lang="ts">
-</script>
+<script setup lang="ts"></script>
 <style scoped>
 code {
   background: rgb(var(--v-theme-surface));
@@ -32,20 +31,24 @@ code,
 
     <h2>Basics</h2>
     <ul>
-      <li><code>:</code> Scene Transition (e.g., <code>: CUT TO:</code>)</li>
+      <li><code>: </code> Scene Transition (e.g., <code>: CUT TO:</code>)</li>
       <li>
-        <code>#</code> Scene Heading (e.g., <code># INT. KITCHEN - NIGHT</code>)
+        <code># </code> Scene Heading (e.g.,
+        <code># INT. KITCHEN - NIGHT</code>)
       </li>
       <li>
-        <code>##</code> Scene Secondary Heading (e.g.,
+        <code>## </code> Scene Secondary Heading (e.g.,
         <code>## EXT. HOUSE - NIGHT</code>)
       </li>
-      <li><code>></code> Character name / dialog block initiator</li>
+      <li><code>@</code> Character name / dialog block initiator</li>
       <li>
-        <code>>> (...)</code> Parenthetical direction (e.g.,
-        <code>>> (whispers)</code>)
+        <code>(...)</code> Parenthetical direction (e.g.,
+        <code>(whispers)</code>)
       </li>
-      <li><code>>></code> Dialog line that belongs to the active character</li>
+      <li>
+        New lines proceeding a <code>@</code>line, are treated as dialog lines
+        assocaited to that character.
+      </li>
       <li><code>**Bold Text**</code> → <b>Bold Text</b></li>
       <li><code>*Italicized Text*</code> → <i>Italicized Text</i></li>
       <li><code>_Underline Text_</code> → <u>Underline Text</u></li>
@@ -132,9 +135,9 @@ code,
         <span class="syntax-highlight">:</span> Fade In<br />
         <span class="syntax-highlight">#</span> EXT. PLATFORM - NIGHT<br />
         The train screeches into view as @(Morgan V) checks her watch.<br />
-        <span class="syntax-highlight">></span> [Momo](Morgan V)<br />
-        <span class="syntax-highlight">>></span> (tense)<br />
-        <span class="syntax-highlight">>></span> We're out of time.<br />
+        [Momo](Morgan V)<br />
+        (tense)<br />
+        We're out of time.<br />
         The wind catches her coat as @Elia arrives.
       </div>
     </v-sheet>
