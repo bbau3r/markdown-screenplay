@@ -149,7 +149,7 @@ export function isCharacterLine(raw: string): boolean {
   // Helpers and precompiled regexes
   const hasLetter = /[A-Za-z]/;
   const hasLower = /[a-z]/;
-  const constructReg = / \[([^\] ]+)\] \(([^)]+)\)(?:\s*\(([^)]+)\))?|@\(([^)]+)\)|@([^\s()]+)/g;
+  const constructReg = /\[([^\]]+)\]\(([^)]+)\)(?:\s*\(([^)]+)\))?|@\(([^)]+)\)|@([^\s()]+)/g;
 
   // Normalize constructs to uppercase inner text in one pass
   const normalized = trimmed.replace(constructReg, (_m, alias, ref, paren, atParen, atName) => {
