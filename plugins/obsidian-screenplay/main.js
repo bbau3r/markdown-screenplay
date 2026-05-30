@@ -495,7 +495,7 @@ function detectBlockStart(trimmed, nextLine) {
   if (/^#{1,6} /.test(trimmed)) {
     return "scene";
   }
-  if (trimmed.startsWith(": ") && !trimmed.endsWith(" :")) {
+  if (trimmed.startsWith(": ")) {
     return "transition";
   }
   if (trimmed.startsWith("@") || /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(trimmed)) {
@@ -516,7 +516,7 @@ function resolveLineType(activeState, trimmed, isSubScene) {
       return trimmed.startsWith("(") ? "dialog-parenthetical" : "dialog";
     case "action":
     default:
-      if (trimmed.startsWith(": ") && trimmed.endsWith(" :")) {
+      if (trimmed.startsWith(">") && trimmed.endsWith("<")) {
         return "centered-action";
       }
       return "action";
@@ -898,8 +898,8 @@ function hideSyntaxPrefix(builder, line, type) {
     if (text.startsWith("@"))
       builder.add(line.from, line.from + 1, import_view2.Decoration.replace({}));
   } else if (type === "centered-action") {
-    const matchStart = text.match(/^:\s*/);
-    const matchEnd = text.match(/\s*:$/);
+    const matchStart = text.match(/^>\s*/);
+    const matchEnd = text.match(/\s*<$/);
     if (matchStart)
       builder.add(line.from, line.from + matchStart[0].length, import_view2.Decoration.replace({}));
     if (matchEnd && line.to - matchEnd[0].length > line.from) {
@@ -1072,7 +1072,7 @@ function stripPrefixFromLineElement(lineEl, type) {
       if (val.startsWith("@"))
         firstChild.nodeValue = val.slice(1);
     } else if (type === "centered-action") {
-      const match = val.match(/^:\s*/);
+      const match = val.match(/^>\s*/);
       if (match)
         firstChild.nodeValue = val.slice(match[0].length);
     }
@@ -1081,7 +1081,7 @@ function stripPrefixFromLineElement(lineEl, type) {
     const lastChild = lineEl.lastChild;
     if (lastChild && lastChild.nodeType === Node.TEXT_NODE) {
       const val = lastChild.nodeValue || "";
-      const match = val.match(/\s*:$/);
+      const match = val.match(/\s*<$/);
       if (match)
         lastChild.nodeValue = val.slice(0, -match[0].length);
     }

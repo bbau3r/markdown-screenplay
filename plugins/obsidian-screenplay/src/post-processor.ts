@@ -166,17 +166,17 @@ function stripPrefixFromLineElement(lineEl: HTMLElement, type: string): void {
     } else if (type === "dialog-character") {
       if (val.startsWith("@")) firstChild.nodeValue = val.slice(1);
     } else if (type === "centered-action") {
-      const match = val.match(/^:\s*/);
+      const match = val.match(/^>\s*/);
       if (match) firstChild.nodeValue = val.slice(match[0].length);
     }
   }
 
-  // Also strip trailing colon from centered actions
+  // Also strip trailing less-than sign from centered actions
   if (type === "centered-action") {
     const lastChild = lineEl.lastChild;
     if (lastChild && lastChild.nodeType === Node.TEXT_NODE) {
       const val = lastChild.nodeValue || "";
-      const match = val.match(/\s*:$/);
+      const match = val.match(/\s*<$/);
       if (match) lastChild.nodeValue = val.slice(0, -match[0].length);
     }
   }

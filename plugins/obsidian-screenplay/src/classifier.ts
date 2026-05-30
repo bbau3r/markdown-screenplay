@@ -6,8 +6,8 @@
  *
  * ## MDSP Syntax Summary:
  * - `# heading`        → Scene heading (single #) or sub-scene heading (##, ###, etc.)
- * - `: text`           → Scene transition (right-aligned, colon prefix only)
- * - `: text :`         → Centered action (colon prefix AND suffix)
+ * - `: text`           → Scene transition (right-aligned, colon prefix)
+ * - `> text <`         → Centered action (angle bracket prefix AND suffix)
  * - `@Name` / `[A](B)` → Character name, starts a dialog block if followed by non-blank
  * - `(text)`           → Dialog parenthetical (when inside a dialog block)
  * - Everything else    → Action
@@ -81,8 +81,8 @@ function detectBlockStart(trimmed: string, nextLine: string | undefined): Active
     return "scene";
   }
 
-  // Scene transitions: `: text` (but NOT centered action `: text :`)
-  if (trimmed.startsWith(": ") && !trimmed.endsWith(" :")) {
+  // Scene transitions: `: text`
+  if (trimmed.startsWith(": ")) {
     return "transition";
   }
 
@@ -110,8 +110,8 @@ function resolveLineType(activeState: ActiveState, trimmed: string, isSubScene: 
       return trimmed.startsWith("(") ? "dialog-parenthetical" : "dialog";
     case "action":
     default:
-      // Centered action: `: text :`
-      if (trimmed.startsWith(": ") && trimmed.endsWith(" :")) {
+      // Centered action: `> text <`
+      if (trimmed.startsWith(">") && trimmed.endsWith("<")) {
         return "centered-action";
       }
       return "action";
