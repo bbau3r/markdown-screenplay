@@ -54,7 +54,7 @@ export class HTMLTransformTarget implements TransformTarget<string> {
   }
   ProcessDefault(line: string): void {
     this.closeActiveSection();
-    const isCentered = line.startsWith(": ") && line.endsWith(" :");
+    const isCentered = line.startsWith(">") && line.endsWith("<");
     if (isCentered)
       this._output += `<p class="centered">${this.formatLine(line.slice(2, -2).trim())}</p>\n`;
     else

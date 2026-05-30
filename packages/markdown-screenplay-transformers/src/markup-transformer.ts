@@ -59,7 +59,7 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
         case line.startsWith("# "):
           this._activeType = ScreenplayActiveType.Scene;
           break;
-        case line.startsWith(": ") && !line.endsWith(" :"):
+        case line.startsWith(": "):
           this._activeType = ScreenplayActiveType.Transition;
           break;
         case line.startsWith("@"):
