@@ -4,9 +4,11 @@ If you want to view the source, please visit the github repository of this monor
 */
 
 "use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -20,6 +22,14 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/main.ts
@@ -29,8 +39,8 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 var import_obsidian = require("obsidian");
-var import_state = require("@codemirror/state");
-var import_view = require("@codemirror/view");
+
+// src/utils.ts
 function logDebug(app, msg) {
   console.debug(`[Screenplay Debug] ${msg}`);
 }
@@ -40,7 +50,91 @@ function cleanBOM(str) {
   }
   return str;
 }
-function parseFrontmatterText(text) {
+function parseScalarValue(val) {
+  val = val.trim();
+  if (!val)
+    return "";
+  if (val.startsWith('"') && val.endsWith('"') || val.startsWith("'") && val.endsWith("'")) {
+    return val.slice(1, -1);
+  }
+  const lower = val.toLowerCase();
+  if (lower === "true")
+    return true;
+  if (lower === "false")
+    return false;
+  if (lower === "null")
+    return null;
+  const num = Number(val);
+  if (!isNaN(num))
+    return num;
+  return val;
+}
+function stripQuotes(val) {
+  return val.replace(/^['"]|['"]$/g, "");
+}
+function isCursorOnLine(view, lineNumber) {
+  return view.state.selection.ranges.some((r) => {
+    try {
+      const fromLine = view.state.doc.lineAt(r.from).number;
+      const toLine = view.state.doc.lineAt(r.to).number;
+      return fromLine === toLine && fromLine === lineNumber;
+    } catch {
+      return false;
+    }
+  });
+}
+function isCursorInRange(view, from, to) {
+  return view.state.selection.ranges.some((r) => {
+    try {
+      const fromLine = view.state.doc.lineAt(r.from).number;
+      const toLine = view.state.doc.lineAt(r.to).number;
+      return fromLine === toLine && r.from <= to && r.to >= from;
+    } catch {
+      return false;
+    }
+  });
+}
+function normalizeHex6(color) {
+  const fallback = "#808080";
+  if (!color || !color.startsWith("#"))
+    return fallback;
+  if (color.length === 9)
+    return color.slice(0, 7);
+  if (color.length === 7)
+    return color;
+  return fallback;
+}
+function buildHexWithAlpha(hex6, originalColor, defaultAlpha = "7d") {
+  if (originalColor && originalColor.startsWith("#") && originalColor.length === 9) {
+    return hex6 + originalColor.slice(7, 9);
+  }
+  return hex6 + defaultAlpha;
+}
+function focusAndSelectAll(el) {
+  el.focus();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
+// src/types.ts
+var CLASSIFICATION_CSS_CLASS = {
+  "scene-heading": "cm-mdsp-scene-heading",
+  "scene-heading-sub": "cm-mdsp-scene-heading-sub",
+  "scene-transition": "cm-mdsp-scene-transition",
+  "dialog-character": "cm-mdsp-dialog-heading",
+  "dialog": "cm-mdsp-dialog",
+  "dialog-parenthetical": "cm-mdsp-dialog-parenthetical",
+  "action": "cm-mdsp-action",
+  "centered-action": "cm-mdsp-centered"
+};
+var CHARACTER_REF_REGEX = /@\(([^)]+)\)|@(\w+)|\[([^\]]+)\]\(([^)]+)\)/g;
+var MAX_FRONTMATTER_SCAN_LINES = 200;
+
+// src/frontmatter.ts
+function parseFrontmatter(text) {
   const result = {};
   const lines = text.split(/\r?\n/);
   if (lines.length === 0)
@@ -83,84 +177,70 @@ function parseFrontmatterText(text) {
       }
     }
     if (inCharacters) {
-      if (trimmed.startsWith("-")) {
-        const item = trimmed.substring(1).trim();
-        const colorMatch = item.match(/^(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s+(.+)$/);
-        if (colorMatch) {
-          const color = colorMatch[1].replace(/^['"]|['"]$/g, "");
-          const name = colorMatch[2].trim();
-          result.characters[name] = { color };
-        } else {
-          result.characters[item] = {};
-        }
-      } else {
-        const colonMatch = trimmed.match(/^([^:]+)\s*:(.*)$/);
-        if (colonMatch) {
-          const key = colonMatch[1].trim();
-          const val = colonMatch[2].trim();
-          if (indent === 2) {
-            currentCharacterName = key;
-            if (val) {
-              result.characters[currentCharacterName] = parseScalarValue(val);
-            } else {
-              result.characters[currentCharacterName] = {};
-            }
-          } else if (indent > 2 && currentCharacterName) {
-            if (key === "color") {
-              const colorVal = val.replace(/^['"]|['"]$/g, "");
-              if (typeof result.characters[currentCharacterName] !== "object") {
-                result.characters[currentCharacterName] = {};
-              }
-              result.characters[currentCharacterName].color = colorVal;
-            } else {
-              if (typeof result.characters[currentCharacterName] !== "object") {
-                result.characters[currentCharacterName] = {};
-              }
-              result.characters[currentCharacterName][key] = parseScalarValue(val);
-            }
-          }
-        }
-      }
-    } else if (currentKey) {
-      if (trimmed.startsWith("-")) {
-        if (!Array.isArray(result[currentKey])) {
-          result[currentKey] = [];
-        }
-        result[currentKey].push(parseScalarValue(trimmed.substring(1).trim()));
-      } else {
-        const match = trimmed.match(/^([^:]+)\s*:(.*)$/);
-        if (match) {
-          const subKey = match[1].trim();
-          const subVal = match[2].trim();
-          if (result[currentKey] === null || typeof result[currentKey] !== "object") {
-            result[currentKey] = {};
-          }
-          result[currentKey][subKey] = parseScalarValue(subVal);
-        }
-      }
+      parseCharacterLine(result, line, trimmed, indent, currentCharacterName, (name) => {
+        currentCharacterName = name;
+      });
+      continue;
+    }
+    if (currentKey) {
+      parseGenericNestedLine(result, currentKey, trimmed);
     }
   }
   return result;
 }
-function parseScalarValue(val) {
-  val = val.trim();
-  if (!val)
-    return "";
-  if (val.startsWith('"') && val.endsWith('"') || val.startsWith("'") && val.endsWith("'")) {
-    return val.slice(1, -1);
+function parseCharacterLine(result, line, trimmed, indent, currentCharacterName, setCurrentName) {
+  const characters = result.characters;
+  if (trimmed.startsWith("-")) {
+    const item = trimmed.substring(1).trim();
+    const colorMatch = item.match(/^(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s+(.+)$/);
+    if (colorMatch) {
+      const color = stripQuotes(colorMatch[1]);
+      const name = colorMatch[2].trim();
+      characters[name] = { color };
+    } else {
+      characters[item] = {};
+    }
+    return;
   }
-  if (val.toLowerCase() === "true")
-    return true;
-  if (val.toLowerCase() === "false")
-    return false;
-  if (val.toLowerCase() === "null")
-    return null;
-  const num = Number(val);
-  if (!isNaN(num))
-    return num;
-  return val;
+  const colonMatch = trimmed.match(/^([^:]+)\s*:(.*)$/);
+  if (!colonMatch)
+    return;
+  const key = colonMatch[1].trim();
+  const val = colonMatch[2].trim();
+  if (indent === 2) {
+    setCurrentName(key);
+    if (val) {
+      characters[key] = parseScalarValue(val);
+    } else {
+      characters[key] = {};
+    }
+  } else if (indent > 2 && currentCharacterName) {
+    if (typeof characters[currentCharacterName] !== "object") {
+      characters[currentCharacterName] = {};
+    }
+    const charObj = characters[currentCharacterName];
+    charObj[key] = key === "color" ? stripQuotes(val) : parseScalarValue(val);
+  }
 }
-function parseCharactersFromDoc(doc) {
+function parseGenericNestedLine(result, currentKey, trimmed) {
+  if (trimmed.startsWith("-")) {
+    if (!Array.isArray(result[currentKey])) {
+      result[currentKey] = [];
+    }
+    result[currentKey].push(parseScalarValue(trimmed.substring(1).trim()));
+  } else {
+    const match = trimmed.match(/^([^:]+)\s*:(.*)$/);
+    if (match) {
+      const subKey = match[1].trim();
+      const subVal = match[2].trim();
+      if (result[currentKey] === null || typeof result[currentKey] !== "object") {
+        result[currentKey] = {};
+      }
+      result[currentKey][subKey] = parseScalarValue(subVal);
+    }
+  }
+}
+function parseCharacterColorsFromDoc(doc) {
   const colors = /* @__PURE__ */ new Map();
   if (doc.length === 0)
     return colors;
@@ -169,11 +249,11 @@ function parseCharactersFromDoc(doc) {
     if (firstLine !== "---")
       return colors;
     let inCharacters = false;
-    let currentCharacterName = "";
-    let currentCharacterColor = "";
-    const commitCharacter = (name, color) => {
-      const cleanName = name.trim().replace(/^['"]|['"]$/g, "").toLowerCase();
-      const cleanColor = color.trim().replace(/^['"]|['"]$/g, "");
+    let currentName = "";
+    let currentColor = "";
+    const commitCharacter = () => {
+      const cleanName = stripQuotes(currentName.trim()).toLowerCase();
+      const cleanColor = stripQuotes(currentColor.trim());
       if (cleanName && cleanColor) {
         colors.set(cleanName, cleanColor);
       }
@@ -181,71 +261,98 @@ function parseCharactersFromDoc(doc) {
     for (let i = 2; i <= doc.lines; i++) {
       const line = doc.line(i).text;
       const trimmed = line.trim();
-      if (trimmed === "---") {
+      if (trimmed === "---" || i > MAX_FRONTMATTER_SCAN_LINES)
         break;
-      }
-      if (i > 200) {
-        break;
-      }
       if (/^characters\s*:/i.test(trimmed)) {
         inCharacters = true;
         continue;
       }
-      if (inCharacters) {
-        if (/^[a-zA-Z0-9_-]+\s*:/i.test(line)) {
-          inCharacters = false;
-          commitCharacter(currentCharacterName, currentCharacterColor);
+      if (!inCharacters)
+        continue;
+      if (/^[a-zA-Z0-9_-]+\s*:/i.test(line)) {
+        commitCharacter();
+        inCharacters = false;
+        continue;
+      }
+      const isListItem = line.trimStart().startsWith("-");
+      if (isListItem) {
+        commitCharacter();
+        currentName = "";
+        currentColor = "";
+        const listContent = line.trimStart().slice(1).trim();
+        const keyValMatch = listContent.match(/^([^:]+)\s*:\s*(.*)$/);
+        if (keyValMatch) {
+          const key = keyValMatch[1].trim();
+          const val = keyValMatch[2].trim();
+          if (/^name$/i.test(key)) {
+            currentName = val;
+          } else if (val) {
+            commitWithValues(colors, key, val);
+          } else {
+            currentName = key;
+          }
           continue;
         }
-        const isListItem = line.trimStart().startsWith("-");
-        if (isListItem) {
-          commitCharacter(currentCharacterName, currentCharacterColor);
-          currentCharacterName = "";
-          currentCharacterColor = "";
-          const listContent = line.trimStart().slice(1).trim();
-          const nameMatch = listContent.match(/^name\s*:\s*(.+)$/i);
-          if (nameMatch) {
-            currentCharacterName = nameMatch[1];
-            continue;
-          }
-          const keyValMatch = listContent.match(/^([^:]+)\s*:\s*(.*)$/);
-          if (keyValMatch) {
-            const key = keyValMatch[1].trim();
-            const val = keyValMatch[2].trim();
-            if (val) {
-              commitCharacter(key, val);
-            } else {
-              currentCharacterName = key;
-            }
-            continue;
-          }
-          currentCharacterName = listContent;
-        } else {
-          const colorMatch = trimmed.match(/^color\s*:\s*(.+)$/i);
-          if (colorMatch) {
-            currentCharacterColor = colorMatch[1];
-            commitCharacter(currentCharacterName, currentCharacterColor);
-            continue;
-          }
-          const nameMatch = trimmed.match(/^name\s*:\s*(.+)$/i);
-          if (nameMatch) {
-            currentCharacterName = nameMatch[1];
-            commitCharacter(currentCharacterName, currentCharacterColor);
-            continue;
-          }
-          const mapKeyMatch = trimmed.match(/^([^:]+)\s*:$/);
-          if (mapKeyMatch) {
-            commitCharacter(currentCharacterName, currentCharacterColor);
-            currentCharacterName = mapKeyMatch[1].trim();
-            currentCharacterColor = "";
-            continue;
-          }
+        currentName = listContent;
+      } else {
+        const colorMatch = trimmed.match(/^color\s*:\s*(.+)$/i);
+        if (colorMatch) {
+          currentColor = colorMatch[1];
+          commitCharacter();
+          continue;
+        }
+        const nameMatch = trimmed.match(/^name\s*:\s*(.+)$/i);
+        if (nameMatch) {
+          currentName = nameMatch[1];
+          commitCharacter();
+          continue;
+        }
+        const mapKeyMatch = trimmed.match(/^([^:]+)\s*:$/);
+        if (mapKeyMatch) {
+          commitCharacter();
+          currentName = mapKeyMatch[1].trim();
+          currentColor = "";
         }
       }
     }
-    commitCharacter(currentCharacterName, currentCharacterColor);
+    commitCharacter();
   } catch (e) {
-    console.error("Error parsing mdsp frontmatter: ", e);
+    console.error("Error parsing mdsp frontmatter:", e);
+  }
+  return colors;
+}
+function commitWithValues(colors, name, color) {
+  const cleanName = stripQuotes(name.trim()).toLowerCase();
+  const cleanColor = stripQuotes(color.trim());
+  if (cleanName && cleanColor) {
+    colors.set(cleanName, cleanColor);
+  }
+}
+function parseCharacterColorsFromCache(frontmatter) {
+  const colors = /* @__PURE__ */ new Map();
+  if (!frontmatter?.characters)
+    return colors;
+  const charsObj = frontmatter.characters;
+  if (Array.isArray(charsObj)) {
+    for (const item of charsObj) {
+      if (typeof item !== "string")
+        continue;
+      const match = item.match(/^(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s+(.+)$/);
+      if (match) {
+        colors.set(match[2].trim().toLowerCase(), stripQuotes(match[1]));
+      } else {
+        colors.set(item.trim().toLowerCase(), "");
+      }
+    }
+  } else if (typeof charsObj === "object" && charsObj !== null) {
+    for (const [key, val] of Object.entries(charsObj)) {
+      const name = key.trim().toLowerCase();
+      if (typeof val === "string") {
+        colors.set(name, stripQuotes(val));
+      } else if (val && typeof val === "object" && val.color) {
+        colors.set(name, stripQuotes(String(val.color)));
+      }
+    }
   }
   return colors;
 }
@@ -256,69 +363,117 @@ function getEndFrontmatterLine(doc) {
     const firstLine = cleanBOM(doc.line(1).text.trim());
     if (firstLine !== "---")
       return -1;
-    for (let i = 2; i <= doc.lines; i++) {
+    const maxLines = Math.min(doc.lines, 100);
+    for (let i = 2; i <= maxLines; i++) {
       if (doc.line(i).text.trim() === "---") {
         return i;
       }
-      if (i > 100)
-        break;
     }
-  } catch (e) {
+  } catch {
   }
   return -1;
 }
 function getCharactersBlockRange(doc) {
-  let start = -1;
-  let end = -1;
+  const range = { start: -1, end: -1 };
   try {
     const firstLine = cleanBOM(doc.line(1).text.trim());
     if (firstLine !== "---")
-      return { start, end };
+      return range;
     let inCharacters = false;
-    for (let i = 2; i <= doc.lines; i++) {
+    const maxLines = Math.min(doc.lines, MAX_FRONTMATTER_SCAN_LINES);
+    for (let i = 2; i <= maxLines; i++) {
       const line = doc.line(i).text;
       const trimmed = line.trim();
       if (trimmed === "---") {
-        if (inCharacters) {
-          end = i - 1;
-        }
+        if (inCharacters)
+          range.end = i - 1;
         break;
       }
-      if (i > 200)
-        break;
       if (/^characters\s*:/i.test(trimmed)) {
-        start = i + 1;
+        range.start = i + 1;
         inCharacters = true;
         continue;
       }
-      if (inCharacters) {
-        if (/^[a-zA-Z0-9_-]+\s*:/i.test(line)) {
-          end = i - 1;
-          break;
-        }
+      if (inCharacters && /^[a-zA-Z0-9_-]+\s*:/i.test(line)) {
+        range.end = i - 1;
+        break;
       }
     }
-    if (inCharacters && end === -1) {
+    if (inCharacters && range.end === -1) {
       for (let i = 2; i <= doc.lines; i++) {
         if (doc.line(i).text.trim() === "---") {
-          end = i - 1;
+          range.end = i - 1;
           break;
         }
       }
     }
-  } catch (e) {
+  } catch {
   }
-  return { start, end };
+  return range;
 }
+function extractFrontmatterText(doc) {
+  try {
+    const maxLines = Math.min(doc.lines, 100);
+    if (doc.lines > 0 && cleanBOM(doc.line(1).text.trim()) === "---") {
+      for (let i = 2; i <= maxLines; i++) {
+        if (doc.line(i).text.trim() === "---") {
+          const lines = [];
+          for (let j = 1; j <= i; j++) {
+            lines.push(doc.line(j).text);
+          }
+          return lines.join("\n");
+        }
+      }
+    }
+  } catch {
+  }
+  return "";
+}
+function serializeFrontmatter(fm) {
+  const lines = ["---"];
+  for (const [key, value] of Object.entries(fm)) {
+    if (key === "characters") {
+      lines.push("characters:");
+      if (value && typeof value === "object") {
+        for (const [charName, charInfo] of Object.entries(value)) {
+          if (charInfo && typeof charInfo === "object" && charInfo.color) {
+            lines.push(`  ${charName}:`);
+            lines.push(`    color: "${charInfo.color}"`);
+          } else if (typeof charInfo === "string") {
+            lines.push(`  ${charName}: "${charInfo}"`);
+          } else {
+            lines.push(`  ${charName}:`);
+          }
+        }
+      }
+    } else if (key === "authors") {
+      lines.push("authors:");
+      if (Array.isArray(value)) {
+        for (const author of value) {
+          lines.push(`  - ${author}`);
+        }
+      }
+    } else {
+      if (typeof value === "string") {
+        lines.push(`${key}: "${value}"`);
+      } else {
+        lines.push(`${key}: ${value}`);
+      }
+    }
+  }
+  lines.push("---");
+  return lines.join("\n");
+}
+
+// src/classifier.ts
 function classifyFile(text) {
   const lines = text.split(/\r?\n/);
   const classifications = [];
   let inFrontmatter = false;
-  let activeType = "none";
+  let activeState = "none";
   let isSubScene = false;
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
+    const trimmed = lines[i].trim();
     if (trimmed === "---") {
       if (i === 0 || inFrontmatter) {
         inFrontmatter = !inFrontmatter;
@@ -332,183 +487,100 @@ function classifyFile(text) {
     }
     if (trimmed.length === 0) {
       classifications.push({ type: "blank" });
-      activeType = "none";
+      activeState = "none";
       continue;
     }
-    if (activeType === "none") {
-      if (trimmed.match(/^#{1,6} /) !== null || trimmed.startsWith("# ")) {
-        activeType = "scene";
-        const indentCount = (trimmed.match(/^#+/) || ["#"])[0].length;
-        isSubScene = indentCount !== 1;
-      } else if (trimmed.startsWith(": ") && !trimmed.endsWith(" :")) {
-        activeType = "transition";
-      } else if (trimmed.startsWith("@") || trimmed.startsWith("[") && trimmed.match(/^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/) !== null) {
-        const nextLine = lines[i + 1];
-        const isNextLineBlank = !nextLine || nextLine.trim().length === 0;
-        if (isNextLineBlank) {
-          activeType = "action";
-        } else {
-          activeType = "dialog-character";
-        }
-      } else {
-        activeType = "action";
-      }
+    if (activeState === "none") {
+      activeState = detectBlockStart(trimmed, lines[i + 1]);
+      isSubScene = activeState === "scene" && !trimmed.startsWith("# ");
     }
-    if (activeType === "scene") {
-      classifications.push({ type: isSubScene ? "scene-heading-sub" : "scene-heading" });
-    } else if (activeType === "transition") {
-      classifications.push({ type: "scene-transition" });
-    } else if (activeType === "dialog-character") {
-      classifications.push({ type: "dialog-character" });
-      activeType = "dialog";
-    } else if (activeType === "dialog") {
-      if (trimmed.startsWith("(")) {
-        classifications.push({ type: "dialog-parenthetical" });
-      } else {
-        classifications.push({ type: "dialog" });
-      }
-    } else {
-      if (trimmed.startsWith(": ") && trimmed.endsWith(" :")) {
-        classifications.push({ type: "centered-action" });
-      } else {
-        classifications.push({ type: "action" });
-      }
+    classifications.push({ type: resolveLineType(activeState, trimmed, isSubScene) });
+    if (activeState === "dialog-character") {
+      activeState = "dialog";
     }
   }
   return classifications;
 }
-function stripPrefixFromLineElement(lineEl, type) {
-  const firstChild = lineEl.firstChild;
-  if (firstChild && firstChild.nodeType === Node.TEXT_NODE) {
-    const val = firstChild.nodeValue || "";
-    if (type === "scene-heading" || type === "scene-heading-sub") {
-      const match = val.match(/^#+\s*/);
-      if (match) {
-        firstChild.nodeValue = val.slice(match[0].length);
-      }
-    } else if (type === "scene-transition") {
-      const match = val.match(/^:\s*/);
-      if (match) {
-        firstChild.nodeValue = val.slice(match[0].length);
-      }
-    } else if (type === "dialog-character") {
-      if (val.startsWith("@")) {
-        firstChild.nodeValue = val.slice(1);
-      }
-    } else if (type === "centered-action") {
-      const matchStart = val.match(/^:\s*/);
-      if (matchStart) {
-        firstChild.nodeValue = val.slice(matchStart[0].length);
-      }
-    }
+function detectBlockStart(trimmed, nextLine) {
+  if (/^#{1,6} /.test(trimmed)) {
+    return "scene";
   }
-  if (type === "centered-action") {
-    const lastChild = lineEl.lastChild;
-    if (lastChild && lastChild.nodeType === Node.TEXT_NODE) {
-      const val = lastChild.nodeValue || "";
-      const matchEnd = val.match(/\s*:$/);
-      if (matchEnd) {
-        lastChild.nodeValue = val.slice(0, -matchEnd[0].length);
+  if (trimmed.startsWith(">") && !trimmed.endsWith("<")) {
+    return "transition";
+  }
+  if (trimmed.startsWith("@") || /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(trimmed)) {
+    const isNextLineBlank = !nextLine || nextLine.trim().length === 0;
+    return isNextLineBlank ? "action" : "dialog-character";
+  }
+  return "action";
+}
+function resolveLineType(activeState, trimmed, isSubScene) {
+  switch (activeState) {
+    case "scene":
+      return isSubScene ? "scene-heading-sub" : "scene-heading";
+    case "transition":
+      return "scene-transition";
+    case "dialog-character":
+      return "dialog-character";
+    case "dialog":
+      return trimmed.startsWith("(") ? "dialog-parenthetical" : "dialog";
+    case "action":
+    default:
+      if (trimmed.startsWith(">") && trimmed.endsWith("<")) {
+        return "centered-action";
       }
-    }
+      return "action";
   }
 }
-function splitParagraphByBr(pEl, lineTypes) {
-  const newEls = [];
-  let currentGroup = [];
-  const createLineElement = (nodes, type2) => {
-    const lineEl = document.createElement("span");
-    lineEl.style.display = "block";
-    if (type2 === "dialog-character") {
-      lineEl.className = "cm-mdsp-dialog-heading";
-    } else if (type2 === "dialog-parenthetical") {
-      lineEl.className = "cm-mdsp-dialog-parenthetical";
-    } else if (type2 === "dialog") {
-      lineEl.className = "cm-mdsp-dialog";
-    } else if (type2 === "scene-transition") {
-      lineEl.className = "cm-mdsp-scene-transition";
-    } else if (type2 === "centered-action") {
-      lineEl.className = "cm-mdsp-centered";
-    } else if (type2 === "scene-heading") {
-      lineEl.className = "cm-mdsp-scene-heading";
-    } else if (type2 === "scene-heading-sub") {
-      lineEl.className = "cm-mdsp-scene-heading-sub";
-    } else {
-      lineEl.className = "cm-mdsp-action";
-    }
-    for (const node of nodes) {
-      lineEl.appendChild(node);
-    }
-    stripPrefixFromLineElement(lineEl, type2);
-    return lineEl;
-  };
-  const childNodes = Array.from(pEl.childNodes);
-  let lineIdx = 0;
-  for (const node of childNodes) {
-    if (node.nodeName.toLowerCase() === "br") {
-      const type2 = lineTypes[lineIdx] || "action";
-      newEls.push(createLineElement(currentGroup, type2));
-      currentGroup = [];
-      lineIdx++;
-    } else {
-      currentGroup.push(node);
-    }
-  }
-  const type = lineTypes[lineIdx] || "action";
-  newEls.push(createLineElement(currentGroup, type));
-  return newEls;
-}
-function isPosInCharacterMatch(pos, doc, colors) {
-  if (pos < 0 || pos > doc.length)
-    return false;
-  try {
-    const line = doc.lineAt(pos);
-    const text = line.text;
-    const regex = /@\(([^)]+)\)|@(\w+)|\[([^\]]+)\]\(([^)]+)\)/g;
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      const fullMatch = match[0];
-      const matchStart = line.from + match.index;
-      const matchEnd = matchStart + fullMatch.length;
-      if (pos >= matchStart && pos <= matchEnd) {
-        let characterName = "";
-        if (match[1])
-          characterName = match[1];
-        else if (match[2])
-          characterName = match[2];
-        else if (match[4])
-          characterName = match[4];
-        if (characterName) {
-          const lowerName = characterName.trim().toLowerCase();
-          if (colors.has(lowerName)) {
-            return true;
-          }
-        }
-      }
-    }
-  } catch (e) {
-  }
-  return false;
-}
+
+// src/decorations.ts
+var import_state = require("@codemirror/state");
+var import_view2 = require("@codemirror/view");
+
+// src/widgets.ts
+var import_view = require("@codemirror/view");
 var ColorBubbleWidget = class extends import_view.WidgetType {
   constructor(color, view) {
     super();
     this.color = color;
     this.view = view;
   }
+  eq(other) {
+    return other.color === this.color;
+  }
   toDOM() {
     const container = document.createElement("span");
     container.style.display = "inline-flex";
     container.style.alignItems = "center";
     container.style.cursor = "pointer";
+    const bubble = this.createBubble();
+    container.appendChild(bubble);
+    const colorInput = this.createColorInput();
+    container.appendChild(colorInput);
+    container.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      colorInput.click();
+    });
+    colorInput.addEventListener("input", (e) => e.stopPropagation());
+    colorInput.addEventListener("change", (e) => {
+      e.stopPropagation();
+      this.handleColorChange(container, colorInput.value);
+    });
+    return container;
+  }
+  /** Creates the circular color swatch element. */
+  createBubble() {
     const bubble = document.createElement("span");
     bubble.className = "cm-mdsp-color-bubble";
-    bubble.style.display = "inline-block";
-    bubble.style.width = "12px";
-    bubble.style.height = "12px";
-    bubble.style.borderRadius = "50%";
-    bubble.style.marginRight = "6px";
-    bubble.style.verticalAlign = "middle";
+    Object.assign(bubble.style, {
+      display: "inline-block",
+      width: "12px",
+      height: "12px",
+      borderRadius: "50%",
+      marginRight: "6px",
+      verticalAlign: "middle"
+    });
     if (this.color) {
       bubble.style.backgroundColor = this.color;
       bubble.style.border = "1px solid rgba(0, 0, 0, 0.15)";
@@ -519,427 +591,736 @@ var ColorBubbleWidget = class extends import_view.WidgetType {
       bubble.style.opacity = "0.7";
       bubble.title = "Click to assign a color";
     }
-    container.appendChild(bubble);
-    const colorInput = document.createElement("input");
-    colorInput.type = "color";
-    let hex6 = "#808080";
-    if (this.color && this.color.startsWith("#")) {
-      if (this.color.length === 9) {
-        hex6 = this.color.slice(0, 7);
-      } else if (this.color.length === 7) {
-        hex6 = this.color;
-      }
-    }
-    colorInput.value = hex6;
-    colorInput.style.display = "none";
-    container.appendChild(colorInput);
-    container.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      colorInput.click();
-    });
-    colorInput.addEventListener("input", (e) => {
-      e.stopPropagation();
-    });
-    colorInput.addEventListener("change", (e) => {
-      e.stopPropagation();
-      const newColor6 = colorInput.value;
-      let finalColor = newColor6;
-      if (this.color && this.color.startsWith("#") && this.color.length === 9) {
-        const alpha = this.color.slice(7, 9);
-        finalColor = newColor6 + alpha;
-      } else {
-        finalColor = newColor6 + "7d";
-      }
-      try {
-        const pos = this.view.posAtDOM(container);
-        if (pos !== null) {
-          const line = this.view.state.doc.lineAt(pos);
-          const text = line.text;
-          const colorRegex = /#([a-fA-F0-9]{3,8})/i;
-          const match = text.match(colorRegex);
-          if (match && match.index !== void 0) {
-            const startPos = line.from + match.index;
-            const endPos = startPos + match[0].length;
-            this.view.dispatch({
-              changes: {
-                from: startPos,
-                to: endPos,
-                insert: finalColor
-              }
-            });
-          } else {
-            const listMatch = text.match(/^(\s*-\s*)(.+)$/);
-            if (listMatch) {
-              const prefix = listMatch[1];
-              const name = listMatch[2].trim();
-              this.view.dispatch({
-                changes: {
-                  from: line.from,
-                  to: line.to,
-                  insert: `${prefix}'${finalColor}' ${name}`
-                }
-              });
-            } else {
-              const mapMatch = text.match(/^(\s*)([^:]+)\s*:\s*$/);
-              if (mapMatch) {
-                const prefix = mapMatch[1];
-                const name = mapMatch[2].trim();
-                this.view.dispatch({
-                  changes: {
-                    from: line.from,
-                    to: line.to,
-                    insert: `${prefix}${name}: '${finalColor}'`
-                  }
-                });
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Failed to update color:", err);
-      }
-    });
-    return container;
+    return bubble;
   }
-  eq(other) {
-    return other.color === this.color;
+  /** Creates a hidden `<input type="color">` element. */
+  createColorInput() {
+    const input = document.createElement("input");
+    input.type = "color";
+    input.value = normalizeHex6(this.color);
+    input.style.display = "none";
+    return input;
   }
-};
-var ScreenplayPlugin = class extends import_obsidian.Plugin {
-  async onload() {
-    console.log("Loading Screenplay MDSP Plugin...");
-    logDebug(this.app, "Plugin onload started");
+  /**
+   * Handles the user selecting a new color from the picker.
+   * Dispatches an editor transaction to update the frontmatter text in-place.
+   */
+  handleColorChange(container, newHex6) {
+    const finalColor = buildHexWithAlpha(newHex6, this.color);
     try {
-      this.registerExtensions(["mdsp"], "markdown");
-      logDebug(this.app, "Extensions registered successfully for mdsp");
-    } catch (e) {
-      logDebug(this.app, "Failed to register extensions: " + e.message);
-    }
-    this.registerEvent(
-      this.app.workspace.on("active-leaf-change", () => {
-        this.updateEditorClasses();
-        setTimeout(() => this.setupPropertiesPanel(), 200);
-      })
-    );
-    this.registerEvent(
-      this.app.metadataCache.on("changed", () => {
-        this.updateEditorClasses();
-        if (!this.savingFrontmatter) {
-          this.setupPropertiesPanel();
-        }
-      })
-    );
-    this.registerEvent(
-      this.app.workspace.on("layout-change", () => {
-        setTimeout(() => this.setupPropertiesPanel(), 150);
-      })
-    );
-    this.app.workspace.onLayoutReady(() => {
-      this.updateEditorClasses();
-      setTimeout(() => this.setupPropertiesPanel(), 500);
-    });
-    this.registerEditorExtension(this.buildEditorExtension());
-    logDebug(this.app, "Editor extension registered successfully");
-    this.registerMarkdownPostProcessor(async (el, ctx) => {
-      logDebug(this.app, `Markdown post-processor running for ${ctx.sourcePath}`);
-      try {
-        const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
-        if (!(file instanceof import_obsidian.TFile) || !this.isScreenplayFile(file)) {
-          return;
-        }
-        const cache = this.app.metadataCache.getFileCache(file);
-        const frontmatter = cache?.frontmatter;
-        const colors = /* @__PURE__ */ new Map();
-        if (frontmatter && frontmatter.characters) {
-          const charsObj = frontmatter.characters;
-          if (Array.isArray(charsObj)) {
-            for (const item of charsObj) {
-              if (typeof item === "string") {
-                const match = item.match(/^(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s+(.+)$/);
-                if (match) {
-                  const color = match[1].replace(/^['"]|['"]$/g, "");
-                  const name = match[2].trim().toLowerCase();
-                  colors.set(name, color);
-                } else {
-                  colors.set(item.trim().toLowerCase(), "");
-                }
-              }
-            }
-          } else if (typeof charsObj === "object") {
-            for (const [key, val] of Object.entries(charsObj)) {
-              const name = key.trim().toLowerCase();
-              if (typeof val === "string") {
-                colors.set(name, val.replace(/^['"]|['"]$/g, ""));
-              } else if (val && typeof val === "object" && val.color) {
-                colors.set(name, String(val.color).replace(/^['"]|['"]$/g, ""));
-              }
-            }
-          }
-        }
-        const classifications = await this.getClassificationsForFile(file);
-        const info = ctx.getSectionInfo(el);
-        if (info) {
-          const childNodes = Array.from(el.childNodes);
-          let currentLine = info.lineStart;
-          for (const child of childNodes) {
-            if (child.nodeType !== Node.ELEMENT_NODE)
-              continue;
-            const childEl = child;
-            const nodeName = childEl.nodeName.toLowerCase();
-            while (currentLine <= info.lineEnd && currentLine < classifications.length && (classifications[currentLine].type === "blank" || classifications[currentLine].type === "frontmatter")) {
-              currentLine++;
-            }
-            if (currentLine > info.lineEnd || currentLine >= classifications.length) {
-              break;
-            }
-            if (nodeName.match(/^h[1-6]$/)) {
-              const type = classifications[currentLine].type;
-              if (type === "scene-heading-sub") {
-                childEl.className = "cm-mdsp-scene-heading-sub";
-              } else {
-                childEl.className = "cm-mdsp-scene-heading";
-              }
-              stripPrefixFromLineElement(childEl, type);
-              currentLine++;
-            } else if (nodeName === "p") {
-              const brCount = childEl.querySelectorAll("br").length;
-              const lineTypes = [];
-              for (let i = 0; i <= brCount; i++) {
-                while (currentLine <= info.lineEnd && currentLine < classifications.length && (classifications[currentLine].type === "blank" || classifications[currentLine].type === "frontmatter")) {
-                  currentLine++;
-                }
-                if (currentLine <= info.lineEnd && currentLine < classifications.length) {
-                  lineTypes.push(classifications[currentLine].type);
-                  currentLine++;
-                } else {
-                  lineTypes.push("action");
-                }
-              }
-              const newEls = splitParagraphByBr(childEl, lineTypes);
-              childEl.innerHTML = "";
-              for (const newEl of newEls) {
-                childEl.appendChild(newEl);
-              }
-            }
-          }
-        }
-        logDebug(this.app, `Parsed Reading View YAML colors count: ${colors.size}`);
-        if (colors.size === 0)
-          return;
-        const links = el.querySelectorAll("a.internal-link");
-        links.forEach((linkEl) => {
-          const href = linkEl.getAttribute("data-href") || linkEl.getAttribute("href") || "";
-          const lowerHref = href.trim().toLowerCase();
-          const color = colors.get(lowerHref);
-          if (color) {
-            const htmlEl = linkEl;
-            htmlEl.style.backgroundColor = color;
-            htmlEl.classList.add("cm-mdsp-character-highlight");
-            htmlEl.style.color = "var(--text-normal)";
-            htmlEl.style.textDecoration = "none";
-            htmlEl.style.pointerEvents = "none";
-            htmlEl.style.cursor = "text";
+      const pos = this.view.posAtDOM(container);
+      if (pos === null)
+        return;
+      const line = this.view.state.doc.lineAt(pos);
+      const text = line.text;
+      const colorMatch = text.match(/#([a-fA-F0-9]{3,8})/i);
+      if (colorMatch && colorMatch.index !== void 0) {
+        this.view.dispatch({
+          changes: {
+            from: line.from + colorMatch.index,
+            to: line.from + colorMatch.index + colorMatch[0].length,
+            insert: finalColor
           }
         });
-        const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
-        let node;
-        const nodesToReplace = [];
-        while (node = walk.nextNode()) {
-          const parentName = node.parentNode?.nodeName.toLowerCase();
-          if (parentName === "code" || parentName === "pre" || parentName === "a" || parentName === "style" || parentName === "script") {
-            continue;
+        return;
+      }
+      const listMatch = text.match(/^(\s*-\s*)(.+)$/);
+      if (listMatch) {
+        this.view.dispatch({
+          changes: {
+            from: line.from,
+            to: line.to,
+            insert: `${listMatch[1]}'${finalColor}' ${listMatch[2].trim()}`
           }
-          const text = node.nodeValue || "";
-          const regex = /@\(([^)]+)\)|@(\w+)/g;
-          if (regex.test(text)) {
-            regex.lastIndex = 0;
-            let lastIdx = 0;
-            let match;
-            const newNodes = [];
-            while ((match = regex.exec(text)) !== null) {
-              const matchStart = match.index;
-              const fullMatch = match[0];
-              let characterName = "";
-              if (match[1])
-                characterName = match[1];
-              else if (match[2])
-                characterName = match[2];
-              const lowerName = characterName.trim().toLowerCase();
-              const color = colors.get(lowerName);
-              if (color) {
-                if (matchStart > lastIdx) {
-                  newNodes.push(document.createTextNode(text.substring(lastIdx, matchStart)));
+        });
+        return;
+      }
+      const mapMatch = text.match(/^(\s*)([^:]+)\s*:\s*$/);
+      if (mapMatch) {
+        this.view.dispatch({
+          changes: {
+            from: line.from,
+            to: line.to,
+            insert: `${mapMatch[1]}${mapMatch[2].trim()}: '${finalColor}'`
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Failed to update color:", err);
+    }
+  }
+};
+
+// src/decorations.ts
+function buildEditorExtension(app, isScreenplayFile, frontmatterCache) {
+  return [
+    import_view2.ViewPlugin.fromClass(
+      class {
+        decorations;
+        classificationCache = /* @__PURE__ */ new WeakMap();
+        constructor(view) {
+          this.decorations = this.buildDecorations(view);
+        }
+        update(update) {
+          if (update.docChanged || update.viewportChanged || update.selectionSet) {
+            this.decorations = this.buildDecorations(update.view);
+          }
+        }
+        /** Returns cached classifications for a document, computing if needed. */
+        getClassifications(doc) {
+          let cached = this.classificationCache.get(doc);
+          if (!cached) {
+            cached = classifyFile(doc.toString());
+            this.classificationCache.set(doc, cached);
+          }
+          return cached;
+        }
+        /** Main decoration builder — coordinates all decoration layers. */
+        buildDecorations(view) {
+          logDebug(app, `buildDecorations started for doc length=${view.state.doc.length}`);
+          try {
+            if (!this.shouldDecorate(view, isScreenplayFile)) {
+              return import_view2.Decoration.none;
+            }
+            this.refreshFrontmatterCache(view, frontmatterCache);
+            const builder = new import_state.RangeSetBuilder();
+            const classifications = this.getClassifications(view.state.doc);
+            for (const { from, to } of view.visibleRanges) {
+              const startLine = view.state.doc.lineAt(from).number;
+              const endLine = view.state.doc.lineAt(to).number;
+              for (let l = startLine; l <= endLine; l++) {
+                const line = view.state.doc.line(l);
+                if (this.isFrontmatterLine(l, frontmatterCache.endLine)) {
+                  decorateFrontmatterLine(view, builder, line, l, frontmatterCache);
+                  continue;
                 }
-                const span = document.createElement("span");
-                span.className = "cm-mdsp-character-highlight";
-                span.style.backgroundColor = color;
-                span.textContent = characterName;
-                newNodes.push(span);
-                lastIdx = matchStart + fullMatch.length;
+                const classification = classifications[l - 1];
+                if (classification) {
+                  decorateScreenplayLine(view, builder, line, l, classification);
+                }
+                decorateCharacterReferences(view, builder, line, frontmatterCache.colors);
               }
             }
-            if (lastIdx < text.length) {
-              newNodes.push(document.createTextNode(text.substring(lastIdx)));
-            }
-            if (newNodes.length > 0) {
-              nodesToReplace.push({ node, parent: node.parentNode, newNodes });
-            }
+            const result = builder.finish();
+            logDebug(app, `buildDecorations finished with size=${result.size}`);
+            return result;
+          } catch (err) {
+            const msg = err instanceof Error ? `${err.message}
+Stack: ${err.stack}` : String(err);
+            logDebug(app, `ERROR in buildDecorations: ${msg}`);
+            return import_view2.Decoration.none;
           }
         }
-        for (const item of nodesToReplace) {
-          const { node: node2, parent, newNodes } = item;
-          if (parent.contains(node2)) {
-            const fragment = document.createDocumentFragment();
-            for (const n of newNodes) {
-              fragment.appendChild(n);
+        /** Determines whether the current document should receive MDSP decorations. */
+        shouldDecorate(view, isScreenplay) {
+          const activeFile = view?.state?.field?.(void 0, false);
+          let activeFileRef = null;
+          try {
+            activeFileRef = app.workspace?.getActiveFile?.() ?? null;
+          } catch {
+          }
+          if (isScreenplay(activeFileRef))
+            return true;
+          return this.hasCharactersBlock(view);
+        }
+        /** Quick scan of the document for a `characters:` frontmatter key. */
+        hasCharactersBlock(view) {
+          try {
+            const doc = view.state.doc;
+            if (doc.length === 0 || cleanBOM(doc.line(1).text.trim()) !== "---")
+              return false;
+            const maxLines = Math.min(doc.lines, 200);
+            for (let i = 2; i <= maxLines; i++) {
+              const line = doc.line(i).text.trim();
+              if (line === "---")
+                break;
+              if (/^characters\s*:/i.test(line))
+                return true;
             }
-            parent.replaceChild(fragment, node2);
+          } catch {
+          }
+          return false;
+        }
+        /** Checks if a line number falls within the frontmatter boundaries. */
+        isFrontmatterLine(lineNumber, endFrontmatterLine) {
+          return endFrontmatterLine !== -1 && lineNumber >= 1 && lineNumber <= endFrontmatterLine;
+        }
+        /** Updates the shared frontmatter cache if the frontmatter text has changed. */
+        refreshFrontmatterCache(view, cache) {
+          const currentText = extractFrontmatterText(view.state.doc);
+          if (currentText !== cache.text) {
+            cache.text = currentText;
+            cache.colors = parseCharacterColorsFromDoc(view.state.doc);
+            cache.endLine = getEndFrontmatterLine(view.state.doc);
+            cache.charRange = getCharactersBlockRange(view.state.doc);
+            logDebug(app, `Frontmatter changed, re-parsed. Colors count=${cache.colors.size}`);
           }
         }
-      } catch (err) {
-        logDebug(this.app, `ERROR in Reading View post-processor: ${err.message}`);
+      },
+      {
+        decorations: (v) => v.decorations
       }
-    });
-    logDebug(this.app, "Markdown post-processor registered successfully");
+    ),
+    // Click handler: prevent Obsidian from following character reference links
+    import_view2.EditorView.domEventHandlers({
+      click(event, view) {
+        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+        if (pos !== null && isPosInCharacterMatch(pos, view.state.doc, frontmatterCache.colors)) {
+          event.preventDefault();
+          event.stopPropagation();
+          return true;
+        }
+        return false;
+      }
+    })
+  ];
+}
+function decorateFrontmatterLine(view, builder, line, lineNumber, cache) {
+  const text = line.text;
+  const lineClass = lineNumber === 1 || lineNumber === cache.endLine ? "cm-mdsp-property-divider" : "cm-mdsp-property-line";
+  builder.add(line.from, line.from, import_view2.Decoration.line({ attributes: { class: lineClass } }));
+  const { charRange } = cache;
+  const isInCharacters = charRange.start !== -1 && charRange.end !== -1 && lineNumber >= charRange.start && lineNumber <= charRange.end;
+  if (isInCharacters) {
+    const decorated = decorateCharacterEntry(view, builder, line, lineNumber);
+    if (decorated)
+      return;
   }
-  // --- Properties panel state ---
-  panelObservers = [];
-  panelDebounces = /* @__PURE__ */ new Map();
-  savingFrontmatter = false;
-  classificationsCache = /* @__PURE__ */ new Map();
-  async getClassificationsForFile(file) {
-    const cached = this.classificationsCache.get(file.path);
-    if (cached && cached.mtime === file.stat.mtime) {
-      return cached.list;
+  decorateGenericProperty(builder, line);
+}
+function decorateCharacterEntry(view, builder, line, lineNumber) {
+  const text = line.text;
+  const cursorOnLine = isCursorOnLine(view, lineNumber);
+  const colorMatch = text.match(/#([a-fA-F0-9]{3,8})/);
+  const listColorMatch = text.match(/^(\s*-\s*)(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s+(.+)$/);
+  if (listColorMatch) {
+    const prefixLen = listColorMatch[1].length;
+    const colorLen = listColorMatch[2].length;
+    const nameStart = prefixLen + colorLen + 1;
+    if (!cursorOnLine) {
+      builder.add(line.from, line.from + nameStart, import_view2.Decoration.replace({}));
     }
-    const content = await this.app.vault.cachedRead(file);
-    const list = classifyFile(content);
-    this.classificationsCache.set(file.path, { mtime: file.stat.mtime, list });
-    return list;
+    if (colorMatch) {
+      addColorBubble(builder, line.from + nameStart, colorMatch[0], view);
+    }
+    addValueMark(builder, line.from + nameStart, line.to);
+    return true;
   }
-  // --- Frontmatter cache for editor decorations ---
-  lastFrontmatterText = "";
-  cachedColors = /* @__PURE__ */ new Map();
-  cachedEndFrontmatterLine = -1;
-  cachedCharRange = { start: -1, end: -1 };
-  onunload() {
-    console.log("Unloading Screenplay MDSP Plugin...");
-    this.teardownPanelObservers();
-    const leaves = this.app.workspace.getLeavesOfType("markdown");
-    for (const leaf of leaves) {
-      const view = leaf.view;
-      if (view instanceof import_obsidian.MarkdownView) {
-        view.contentEl.classList.remove("mdsp-enabled");
-        view.contentEl.querySelectorAll(".mdsp-props-panel").forEach((el) => el.remove());
+  const mapColorMatch = text.match(/^(\s*)([^:]+)\s*:\s*(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s*$/);
+  if (mapColorMatch) {
+    const prefixLen = mapColorMatch[1].length;
+    const keyLen = mapColorMatch[2].length;
+    if (colorMatch) {
+      addColorBubble(builder, line.from + prefixLen, colorMatch[0], view);
+    }
+    addValueMark(builder, line.from + prefixLen, line.from + prefixLen + keyLen);
+    const colonIndex = text.indexOf(":");
+    if (!cursorOnLine) {
+      builder.add(line.from + colonIndex, line.to, import_view2.Decoration.replace({}));
+    } else {
+      builder.add(
+        line.from + colonIndex + 1,
+        line.to,
+        import_view2.Decoration.mark({ class: "cm-mdsp-property-key" })
+      );
+    }
+    return true;
+  }
+  const listNoColorMatch = text.match(/^(\s*-\s*)(.+)$/);
+  if (listNoColorMatch) {
+    const prefixLen = listNoColorMatch[1].length;
+    const name = listNoColorMatch[2].trim();
+    if (name && name !== "---") {
+      if (!cursorOnLine) {
+        builder.add(line.from, line.from + prefixLen, import_view2.Decoration.replace({}));
+      }
+      addColorBubble(builder, line.from + prefixLen, "", view);
+      addValueMark(builder, line.from + prefixLen, line.to);
+      return true;
+    }
+  }
+  const mapNoColorMatch = text.match(/^(\s*)([^:]+)\s*:\s*$/);
+  if (mapNoColorMatch) {
+    const prefixLen = mapNoColorMatch[1].length;
+    const keyLen = mapNoColorMatch[2].length;
+    const name = mapNoColorMatch[2].trim();
+    if (name && name !== "characters" && name !== "---") {
+      addColorBubble(builder, line.from + prefixLen, "", view);
+      addValueMark(builder, line.from + prefixLen, line.from + prefixLen + keyLen);
+      const colonIndex = text.indexOf(":");
+      if (!cursorOnLine) {
+        builder.add(line.from + colonIndex, line.to, import_view2.Decoration.replace({}));
+      }
+      return true;
+    }
+  }
+  return false;
+}
+function addColorBubble(builder, pos, color, view) {
+  builder.add(pos, pos, import_view2.Decoration.widget({
+    widget: new ColorBubbleWidget(color, view),
+    side: -1
+  }));
+}
+function addValueMark(builder, from, to) {
+  builder.add(from, to, import_view2.Decoration.mark({ class: "cm-mdsp-property-value" }));
+}
+function decorateGenericProperty(builder, line) {
+  const text = line.text;
+  const keyValMatch = text.match(/^(\s*-?\s*)([a-zA-Z0-9_-]+)\s*:(.*)$/);
+  if (keyValMatch) {
+    const prefixLen = keyValMatch[1].length;
+    const keyLen = keyValMatch[2].length;
+    builder.add(
+      line.from + prefixLen,
+      line.from + prefixLen + keyLen + 1,
+      import_view2.Decoration.mark({ class: "cm-mdsp-property-key" })
+    );
+    if (keyValMatch[3].trim().length > 0) {
+      addValueMark(builder, line.from + prefixLen + keyLen + 1, line.to);
+    }
+  } else {
+    const listMatch = text.match(/^(\s*-\s*)(.+)$/);
+    if (listMatch) {
+      addValueMark(builder, line.from + listMatch[1].length, line.to);
+    }
+  }
+}
+function decorateScreenplayLine(view, builder, line, lineNumber, classification) {
+  const cssClass = CLASSIFICATION_CSS_CLASS[classification.type];
+  if (!cssClass)
+    return;
+  builder.add(line.from, line.from, import_view2.Decoration.line({ attributes: { class: cssClass } }));
+  if (!isCursorOnLine(view, lineNumber)) {
+    hideSyntaxPrefix(builder, line, classification.type);
+  }
+}
+function hideSyntaxPrefix(builder, line, type) {
+  const text = line.text;
+  if (type === "scene-heading" || type === "scene-heading-sub") {
+    const match = text.match(/^#+\s*/);
+    if (match)
+      builder.add(line.from, line.from + match[0].length, import_view2.Decoration.replace({}));
+  } else if (type === "scene-transition") {
+    const match = text.match(/^:\s*/);
+    if (match)
+      builder.add(line.from, line.from + match[0].length, import_view2.Decoration.replace({}));
+  } else if (type === "dialog-character") {
+    if (text.startsWith("@"))
+      builder.add(line.from, line.from + 1, import_view2.Decoration.replace({}));
+  } else if (type === "centered-action") {
+    const matchStart = text.match(/^:\s*/);
+    const matchEnd = text.match(/\s*:$/);
+    if (matchStart)
+      builder.add(line.from, line.from + matchStart[0].length, import_view2.Decoration.replace({}));
+    if (matchEnd && line.to - matchEnd[0].length > line.from) {
+      builder.add(line.to - matchEnd[0].length, line.to, import_view2.Decoration.replace({}));
+    }
+  }
+}
+function decorateCharacterReferences(view, builder, line, colors) {
+  const text = line.text;
+  const regex = new RegExp(CHARACTER_REF_REGEX.source, CHARACTER_REF_REGEX.flags);
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const fullMatch = match[0];
+    const matchStart = line.from + match.index;
+    const matchEnd = matchStart + fullMatch.length;
+    const { characterName, prefixLen, suffixLen } = parseCharacterMatch(match, fullMatch);
+    if (!characterName)
+      continue;
+    const color = colors.get(characterName.trim().toLowerCase());
+    if (!color)
+      continue;
+    if (!isCursorInRange(view, matchStart, matchEnd)) {
+      if (prefixLen > 0) {
+        builder.add(matchStart, matchStart + prefixLen, import_view2.Decoration.replace({}));
+      }
+      builder.add(
+        matchStart + prefixLen,
+        matchEnd - suffixLen,
+        import_view2.Decoration.mark({
+          attributes: { style: `background-color: ${color};` },
+          class: "cm-mdsp-character-highlight"
+        })
+      );
+      if (suffixLen > 0) {
+        builder.add(matchEnd - suffixLen, matchEnd, import_view2.Decoration.replace({}));
+      }
+    } else {
+      builder.add(matchStart, matchEnd, import_view2.Decoration.mark({ class: "cm-mdsp-character-active" }));
+    }
+  }
+}
+function parseCharacterMatch(match, fullMatch) {
+  if (match[1]) {
+    return { characterName: match[1], prefixLen: 2, suffixLen: 1 };
+  }
+  if (match[2]) {
+    return { characterName: match[2], prefixLen: 1, suffixLen: 0 };
+  }
+  if (match[4]) {
+    const alias = match[3];
+    return {
+      characterName: match[4],
+      prefixLen: 1,
+      // "["
+      suffixLen: fullMatch.length - 1 - alias.length
+      // "](name)"
+    };
+  }
+  return { characterName: "", prefixLen: 0, suffixLen: 0 };
+}
+function isPosInCharacterMatch(pos, doc, colors) {
+  if (pos < 0 || pos > doc.length)
+    return false;
+  try {
+    const line = doc.lineAt(pos);
+    const regex = new RegExp(CHARACTER_REF_REGEX.source, CHARACTER_REF_REGEX.flags);
+    let match;
+    while ((match = regex.exec(line.text)) !== null) {
+      const matchStart = line.from + match.index;
+      const matchEnd = matchStart + match[0].length;
+      if (pos < matchStart || pos > matchEnd)
+        continue;
+      const characterName = match[1] || match[2] || match[4] || "";
+      if (characterName && colors.has(characterName.trim().toLowerCase())) {
+        return true;
       }
     }
+  } catch {
   }
-  teardownPanelObservers() {
-    for (const obs of this.panelObservers)
-      obs.disconnect();
-    this.panelObservers = [];
-  }
-  getFrontmatter(view) {
+  return false;
+}
+
+// src/post-processor.ts
+function createPostProcessor(app, isScreenplayFile, getClassifications) {
+  return async (el, ctx) => {
+    logDebug(app, `Markdown post-processor running for ${ctx.sourcePath}`);
     try {
-      const text = view.editor.getValue();
-      if (text) {
-        const fm = parseFrontmatterText(text);
-        if (fm && Object.keys(fm).length > 0) {
-          return fm;
-        }
+      const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
+      if (!(file instanceof (await import("obsidian")).TFile) || !isScreenplayFile(file)) {
+        return;
       }
-    } catch (e) {
+      const cache = app.metadataCache.getFileCache(file);
+      const colors = parseCharacterColorsFromCache(cache?.frontmatter);
+      const classifications = await getClassifications(file);
+      applyClassificationsToRenderedHTML(el, ctx, classifications);
+      logDebug(app, `Parsed Reading View YAML colors count: ${colors.size}`);
+      if (colors.size === 0)
+        return;
+      highlightCharacterLinks(el, colors);
+      highlightCharacterAtRefs(el, colors);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logDebug(app, `ERROR in Reading View post-processor: ${msg}`);
     }
-    const file = view.file;
-    if (file) {
-      const cache = this.app.metadataCache.getFileCache(file);
-      return cache?.frontmatter || {};
+  };
+}
+function applyClassificationsToRenderedHTML(el, ctx, classifications) {
+  const info = ctx.getSectionInfo(el);
+  if (!info)
+    return;
+  const childNodes = Array.from(el.childNodes);
+  let currentLine = info.lineStart;
+  for (const child of childNodes) {
+    if (child.nodeType !== Node.ELEMENT_NODE)
+      continue;
+    const childEl = child;
+    const nodeName = childEl.nodeName.toLowerCase();
+    currentLine = skipNonContentLines(currentLine, info.lineEnd, classifications);
+    if (currentLine > info.lineEnd || currentLine >= classifications.length)
+      break;
+    if (/^h[1-6]$/.test(nodeName)) {
+      const type = classifications[currentLine].type;
+      childEl.className = type === "scene-heading-sub" ? "cm-mdsp-scene-heading-sub" : "cm-mdsp-scene-heading";
+      stripPrefixFromLineElement(childEl, type);
+      currentLine++;
+    } else if (nodeName === "p") {
+      currentLine = processParagraph(childEl, currentLine, info.lineEnd, classifications);
     }
-    return {};
   }
-  setupPropertiesPanel() {
+}
+function processParagraph(pEl, currentLine, endLine, classifications) {
+  const brCount = pEl.querySelectorAll("br").length;
+  const lineTypes = [];
+  for (let i = 0; i <= brCount; i++) {
+    currentLine = skipNonContentLines(currentLine, endLine, classifications);
+    if (currentLine <= endLine && currentLine < classifications.length) {
+      lineTypes.push(classifications[currentLine].type);
+      currentLine++;
+    } else {
+      lineTypes.push("action");
+    }
+  }
+  const newEls = splitParagraphByBr(pEl, lineTypes);
+  pEl.innerHTML = "";
+  for (const newEl of newEls) {
+    pEl.appendChild(newEl);
+  }
+  return currentLine;
+}
+function skipNonContentLines(currentLine, endLine, classifications) {
+  while (currentLine <= endLine && currentLine < classifications.length && (classifications[currentLine].type === "blank" || classifications[currentLine].type === "frontmatter")) {
+    currentLine++;
+  }
+  return currentLine;
+}
+function stripPrefixFromLineElement(lineEl, type) {
+  const firstChild = lineEl.firstChild;
+  if (firstChild && firstChild.nodeType === Node.TEXT_NODE) {
+    const val = firstChild.nodeValue || "";
+    if (type === "scene-heading" || type === "scene-heading-sub") {
+      const match = val.match(/^#+\s*/);
+      if (match)
+        firstChild.nodeValue = val.slice(match[0].length);
+    } else if (type === "scene-transition") {
+      const match = val.match(/^:\s*/);
+      if (match)
+        firstChild.nodeValue = val.slice(match[0].length);
+    } else if (type === "dialog-character") {
+      if (val.startsWith("@"))
+        firstChild.nodeValue = val.slice(1);
+    } else if (type === "centered-action") {
+      const match = val.match(/^:\s*/);
+      if (match)
+        firstChild.nodeValue = val.slice(match[0].length);
+    }
+  }
+  if (type === "centered-action") {
+    const lastChild = lineEl.lastChild;
+    if (lastChild && lastChild.nodeType === Node.TEXT_NODE) {
+      const val = lastChild.nodeValue || "";
+      const match = val.match(/\s*:$/);
+      if (match)
+        lastChild.nodeValue = val.slice(0, -match[0].length);
+    }
+  }
+}
+function splitParagraphByBr(pEl, lineTypes) {
+  const result = [];
+  let currentGroup = [];
+  let lineIdx = 0;
+  for (const node of Array.from(pEl.childNodes)) {
+    if (node.nodeName.toLowerCase() === "br") {
+      result.push(createLineElement(currentGroup, lineTypes[lineIdx] || "action"));
+      currentGroup = [];
+      lineIdx++;
+    } else {
+      currentGroup.push(node);
+    }
+  }
+  result.push(createLineElement(currentGroup, lineTypes[lineIdx] || "action"));
+  return result;
+}
+function createLineElement(nodes, type) {
+  const lineEl = document.createElement("span");
+  lineEl.style.display = "block";
+  lineEl.className = CLASSIFICATION_CSS_CLASS[type] || "cm-mdsp-action";
+  for (const node of nodes) {
+    lineEl.appendChild(node);
+  }
+  stripPrefixFromLineElement(lineEl, type);
+  return lineEl;
+}
+function highlightCharacterLinks(el, colors) {
+  const links = el.querySelectorAll("a.internal-link");
+  links.forEach((linkEl) => {
+    const href = linkEl.getAttribute("data-href") || linkEl.getAttribute("href") || "";
+    const color = colors.get(href.trim().toLowerCase());
+    if (color) {
+      const htmlEl = linkEl;
+      htmlEl.style.backgroundColor = color;
+      htmlEl.classList.add("cm-mdsp-character-highlight");
+      htmlEl.style.color = "var(--text-normal)";
+      htmlEl.style.textDecoration = "none";
+      htmlEl.style.pointerEvents = "none";
+      htmlEl.style.cursor = "text";
+    }
+  });
+}
+function highlightCharacterAtRefs(el, colors) {
+  const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+  const nodesToReplace = [];
+  const skipParents = /* @__PURE__ */ new Set(["code", "pre", "a", "style", "script"]);
+  let node;
+  while (node = walk.nextNode()) {
+    const parentName = node.parentNode?.nodeName.toLowerCase();
+    if (parentName && skipParents.has(parentName))
+      continue;
+    const text = node.nodeValue || "";
+    const regex = /@\(([^)]+)\)|@(\w+)/g;
+    if (!regex.test(text))
+      continue;
+    regex.lastIndex = 0;
+    const newNodes = buildReplacementNodes(text, regex, colors);
+    if (newNodes.length > 0) {
+      nodesToReplace.push({ node, parent: node.parentNode, newNodes });
+    }
+  }
+  for (const { node: targetNode, parent, newNodes } of nodesToReplace) {
+    if (parent.contains(targetNode)) {
+      const fragment = document.createDocumentFragment();
+      for (const n of newNodes)
+        fragment.appendChild(n);
+      parent.replaceChild(fragment, targetNode);
+    }
+  }
+}
+function buildReplacementNodes(text, regex, colors) {
+  let lastIdx = 0;
+  let match;
+  const newNodes = [];
+  while ((match = regex.exec(text)) !== null) {
+    const characterName = match[1] || match[2] || "";
+    const color = colors.get(characterName.trim().toLowerCase());
+    if (!color)
+      continue;
+    if (match.index > lastIdx) {
+      newNodes.push(document.createTextNode(text.substring(lastIdx, match.index)));
+    }
+    const span = document.createElement("span");
+    span.className = "cm-mdsp-character-highlight";
+    span.style.backgroundColor = color;
+    span.textContent = characterName;
+    newNodes.push(span);
+    lastIdx = match.index + match[0].length;
+  }
+  if (lastIdx < text.length && newNodes.length > 0) {
+    newNodes.push(document.createTextNode(text.substring(lastIdx)));
+  }
+  return newNodes;
+}
+
+// src/properties-panel.ts
+var SKIP_PROPERTIES = /* @__PURE__ */ new Set(["position", "cssclasses", "cssclass", "syntax", "characters", "authors"]);
+var PANEL_DEBOUNCE_MS = 120;
+var PropertiesPanelManager = class {
+  constructor(app, getFrontmatter, saveGenericProperty, saveAuthors, saveCharacters, isScreenplayFile, savingFrontmatter) {
+    this.app = app;
+    this.getFrontmatter = getFrontmatter;
+    this.saveGenericProperty = saveGenericProperty;
+    this.saveAuthors = saveAuthors;
+    this.saveCharacters = saveCharacters;
+    this.isScreenplayFile = isScreenplayFile;
+    this.savingFrontmatter = savingFrontmatter;
+  }
+  observers = [];
+  debounces = /* @__PURE__ */ new Map();
+  /** Disconnects all mutation observers watching for DOM changes. */
+  teardown() {
+    for (const obs of this.observers)
+      obs.disconnect();
+    this.observers = [];
+  }
+  /**
+   * Scans all open markdown leaves and sets up the properties panel
+   * for any that contain screenplay files.
+   */
+  setup() {
     logDebug(this.app, "setupPropertiesPanel called");
-    this.teardownPanelObservers();
+    this.teardown();
     const leaves = this.app.workspace.getLeavesOfType("markdown");
     logDebug(this.app, `setupPropertiesPanel found ${leaves.length} markdown leaves`);
     for (const leaf of leaves) {
       const view = leaf.view;
-      if (!(view instanceof import_obsidian.MarkdownView)) {
-        logDebug(this.app, `Leaf view is not MarkdownView: ${view ? view.getViewType() : "null"}`);
+      if (!view?.file)
         continue;
-      }
-      const file = view.file;
-      logDebug(this.app, `setupPropertiesPanel file: ${file ? file.path : "null"}`);
-      if (!file || !this.isScreenplayFile(file)) {
-        logDebug(this.app, `setupPropertiesPanel file is not screenplay: ${file ? file.path : "null"}`);
+      if (!this.isScreenplayFile(view.file))
         continue;
-      }
       const contentEl = view.contentEl;
       const fm = this.getFrontmatter(view);
-      this.injectPropertiesPanel(contentEl, view, fm);
-      const filePath = file.path;
-      const viewContent = contentEl.querySelector(".cm-editor")?.parentElement || contentEl;
-      const observer = new MutationObserver((mutations) => {
-        if (this.savingFrontmatter)
-          return;
-        let onlyOurPanel = true;
-        for (let i = 0; i < mutations.length; i++) {
-          const mutation = mutations[i];
-          for (let j = 0; j < mutation.addedNodes.length; j++) {
-            const node = mutation.addedNodes[j];
-            if (!node.classList || !node.classList.contains("mdsp-props-panel")) {
-              onlyOurPanel = false;
-              break;
-            }
-          }
-          for (let j = 0; j < mutation.removedNodes.length; j++) {
-            const node = mutation.removedNodes[j];
-            if (!node.classList || !node.classList.contains("mdsp-props-panel")) {
-              onlyOurPanel = false;
-              break;
-            }
-          }
-          if (!onlyOurPanel)
-            break;
-        }
-        if (onlyOurPanel)
-          return;
-        const existingDebounce = this.panelDebounces.get(filePath);
-        if (existingDebounce)
-          clearTimeout(existingDebounce);
-        const timeout = setTimeout(() => {
-          this.panelDebounces.delete(filePath);
-          const freshFm = this.getFrontmatter(view);
-          this.injectPropertiesPanel(contentEl, view, freshFm);
-        }, 120);
-        this.panelDebounces.set(filePath, timeout);
-      });
-      observer.observe(viewContent, { childList: true });
-      this.panelObservers.push(observer);
+      this.injectPanel(contentEl, view, fm);
+      this.observeForReinsertion(contentEl, view);
     }
   }
-  injectPropertiesPanel(contentEl, view, fm) {
-    const file = view.file;
-    if (!file)
+  /**
+   * Watches the editor container for DOM mutations (Obsidian rebuilds)
+   * and re-injects the panel when needed.
+   */
+  observeForReinsertion(contentEl, view) {
+    const filePath = view.file?.path ?? "";
+    const viewContent = contentEl.querySelector(".cm-editor")?.parentElement || contentEl;
+    const observer = new MutationObserver((mutations) => {
+      if (this.savingFrontmatter)
+        return;
+      if (this.areOnlyPanelMutations(mutations))
+        return;
+      const existing = this.debounces.get(filePath);
+      if (existing)
+        clearTimeout(existing);
+      this.debounces.set(
+        filePath,
+        setTimeout(() => {
+          this.debounces.delete(filePath);
+          const freshFm = this.getFrontmatter(view);
+          this.injectPanel(contentEl, view, freshFm);
+        }, PANEL_DEBOUNCE_MS)
+      );
+    });
+    observer.observe(viewContent, { childList: true });
+    this.observers.push(observer);
+  }
+  /** Checks if all mutations are just our own panel being added/removed. */
+  areOnlyPanelMutations(mutations) {
+    for (const mutation of mutations) {
+      for (let i = 0; i < mutation.addedNodes.length; i++) {
+        const node = mutation.addedNodes[i];
+        if (!node.classList?.contains("mdsp-props-panel"))
+          return false;
+      }
+      for (let i = 0; i < mutation.removedNodes.length; i++) {
+        const node = mutation.removedNodes[i];
+        if (!node.classList?.contains("mdsp-props-panel"))
+          return false;
+      }
+    }
+    return true;
+  }
+  // ─── Panel Injection ─────────────────────────────────────────────────────
+  /**
+   * Injects (or replaces) the custom properties panel into the editor content area.
+   * Skips if the frontmatter hasn't changed or the user is actively editing the panel.
+   */
+  injectPanel(contentEl, view, fm) {
+    if (!view.file)
       return;
-    logDebug(this.app, `injectPropertiesPanel called for file: ${file.path}`);
+    logDebug(this.app, `injectPropertiesPanel called for file: ${view.file.path}`);
     const existing = contentEl.querySelector(".mdsp-props-panel");
     if (existing) {
-      const existingFm = existing.dataset.fm;
       const currentFmStr = JSON.stringify(fm);
-      if (existingFm === currentFmStr) {
-        logDebug(this.app, `injectPropertiesPanel: frontmatter is identical, skipping rebuild`);
+      if (existing.dataset.fm === currentFmStr) {
+        logDebug(this.app, "injectPropertiesPanel: frontmatter identical, skipping");
         return;
       }
       if (existing.contains(document.activeElement)) {
-        logDebug(this.app, `injectPropertiesPanel: panel exists and user is focusing/editing inside it, skipping rebuild`);
+        logDebug(this.app, "injectPropertiesPanel: user is editing panel, skipping");
         return;
       }
-      logDebug(this.app, `injectPropertiesPanel: removing existing panel for rebuild`);
       existing.remove();
     }
-    logDebug(this.app, `injectPropertiesPanel: active frontmatter = ${JSON.stringify(fm)}`);
+    const panel = this.buildPanel(view, fm);
+    const metaContainer = contentEl.querySelector(".metadata-container");
+    if (metaContainer) {
+      metaContainer.parentElement.insertBefore(panel, metaContainer);
+    } else {
+      contentEl.prepend(panel);
+    }
+    this.requestEditorMeasure(view);
+  }
+  /** Triggers a CodeMirror layout re-measure after a short delay. */
+  requestEditorMeasure(view) {
+    const editorView = view.editor?.cm;
+    if (editorView?.requestMeasure) {
+      setTimeout(() => {
+        editorView.requestMeasure();
+        logDebug(this.app, "Triggered requestMeasure after panel injection");
+      }, 50);
+    }
+  }
+  // ─── Panel Building ──────────────────────────────────────────────────────
+  /** Builds the complete properties panel DOM tree. */
+  buildPanel(view, fm) {
     const panel = document.createElement("div");
     panel.className = "mdsp-props-panel";
     panel.dataset.fm = JSON.stringify(fm);
@@ -950,30 +1331,16 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
     const body = document.createElement("div");
     body.className = "mdsp-props-body";
     panel.appendChild(body);
-    const skip = /* @__PURE__ */ new Set(["position", "cssclasses", "cssclass", "syntax", "characters", "authors"]);
     for (const [key, value] of Object.entries(fm)) {
-      if (skip.has(key))
+      if (SKIP_PROPERTIES.has(key))
         continue;
       this.renderGenericProperty(body, view, key, value);
     }
     this.renderAuthorsBlock(body, view, fm.authors);
     this.renderCharactersBlock(body, view, fm.characters);
-    const metaC = contentEl.querySelector(".metadata-container");
-    if (metaC) {
-      logDebug(this.app, `injectPropertiesPanel: found .metadata-container, inserting before it`);
-      metaC.parentElement.insertBefore(panel, metaC);
-    } else {
-      logDebug(this.app, `injectPropertiesPanel: NO .metadata-container found, prepending to contentEl`);
-      contentEl.prepend(panel);
-    }
-    const editorView = view.editor?.cm;
-    if (editorView && typeof editorView.requestMeasure === "function") {
-      setTimeout(() => {
-        editorView.requestMeasure();
-        logDebug(this.app, "Triggered requestMeasure after properties panel injection");
-      }, 50);
-    }
+    return panel;
   }
+  // ─── Generic Properties ──────────────────────────────────────────────────
   renderGenericProperty(parent, view, key, value) {
     const row = document.createElement("div");
     row.className = "mdsp-prop-row";
@@ -1013,6 +1380,7 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
     }
     parent.appendChild(row);
   }
+  // ─── Authors Block ───────────────────────────────────────────────────────
   renderAuthorsBlock(parent, view, authorsVal) {
     const block = document.createElement("div");
     block.className = "mdsp-authors-block";
@@ -1020,78 +1388,66 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
     hdr.className = "mdsp-authors-label";
     hdr.textContent = "authors";
     block.appendChild(hdr);
-    const authors = [];
-    if (Array.isArray(authorsVal)) {
-      for (const item of authorsVal) {
-        if (item)
-          authors.push(String(item));
-      }
-    } else if (typeof authorsVal === "string" && authorsVal.trim()) {
-      authors.push(authorsVal.trim());
-    }
+    const authors = this.normalizeAuthorsValue(authorsVal);
     const list = document.createElement("div");
     list.className = "mdsp-authors-list";
     block.appendChild(list);
-    const self = this;
     const render = () => {
       list.innerHTML = "";
       for (let i = 0; i < authors.length; i++) {
-        const author = authors[i];
-        const row = document.createElement("div");
-        row.className = "mdsp-author-row";
-        const nameEl = document.createElement("span");
-        nameEl.className = "mdsp-author-name";
-        nameEl.textContent = author;
-        nameEl.contentEditable = "true";
-        nameEl.spellcheck = false;
-        nameEl.addEventListener("blur", () => {
-          const n = nameEl.textContent?.trim() || "";
-          if (n && n !== authors[i]) {
-            authors[i] = n;
-            self.saveAuthors(view, authors);
-          }
-        });
-        nameEl.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            nameEl.blur();
-          }
-        });
-        row.appendChild(nameEl);
-        const del = document.createElement("span");
-        del.className = "mdsp-author-del";
-        del.innerHTML = "&times;";
-        del.title = "Remove";
-        del.addEventListener("click", () => {
-          authors.splice(i, 1);
-          self.saveAuthors(view, authors);
-          render();
-        });
-        row.appendChild(del);
-        list.appendChild(row);
+        list.appendChild(this.createAuthorRow(view, authors, i, render));
       }
-      const add = document.createElement("div");
-      add.className = "mdsp-author-add-btn";
-      add.textContent = "+ Add author";
-      add.addEventListener("click", () => {
+      list.appendChild(this.createAddButton("+ Add author", () => {
         authors.push("NEW AUTHOR");
-        self.saveAuthors(view, authors);
+        this.saveAuthors(view, authors);
         render();
         const last = list.querySelector(".mdsp-author-row:last-of-type .mdsp-author-name");
-        if (last) {
-          last.focus();
-          const r = document.createRange();
-          r.selectNodeContents(last);
-          const s = window.getSelection();
-          s?.removeAllRanges();
-          s?.addRange(r);
-        }
-      });
-      list.appendChild(add);
+        if (last)
+          focusAndSelectAll(last);
+      }));
     };
     render();
     parent.appendChild(block);
   }
+  /** Normalizes raw authors value into a string array. */
+  normalizeAuthorsValue(val) {
+    if (Array.isArray(val))
+      return val.filter(Boolean).map(String);
+    if (typeof val === "string" && val.trim())
+      return [val.trim()];
+    return [];
+  }
+  /** Creates a single author row with editable name and delete button. */
+  createAuthorRow(view, authors, index, rerender) {
+    const row = document.createElement("div");
+    row.className = "mdsp-author-row";
+    const nameEl = document.createElement("span");
+    nameEl.className = "mdsp-author-name";
+    nameEl.textContent = authors[index];
+    nameEl.contentEditable = "true";
+    nameEl.spellcheck = false;
+    nameEl.addEventListener("blur", () => {
+      const n = nameEl.textContent?.trim() || "";
+      if (n && n !== authors[index]) {
+        authors[index] = n;
+        this.saveAuthors(view, authors);
+      }
+    });
+    nameEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        nameEl.blur();
+      }
+    });
+    row.appendChild(nameEl);
+    row.appendChild(this.createDeleteButton(() => {
+      authors.splice(index, 1);
+      this.saveAuthors(view, authors);
+      rerender();
+    }));
+    return row;
+  }
+  // ─── Characters Block ────────────────────────────────────────────────────
   renderCharactersBlock(parent, view, charsObj) {
     const block = document.createElement("div");
     block.className = "mdsp-chars-block";
@@ -1099,122 +1455,294 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
     hdr.className = "mdsp-chars-label";
     hdr.textContent = "characters";
     block.appendChild(hdr);
-    const characters = [];
-    if (typeof charsObj === "object" && !Array.isArray(charsObj) && charsObj !== null) {
-      for (const [key, val] of Object.entries(charsObj)) {
-        if (val && typeof val === "object" && val.color) {
-          characters.push({ name: key, color: String(val.color).replace(/^['"]|['"]$/g, "") });
-        } else if (typeof val === "string") {
-          characters.push({ name: key, color: val.replace(/^['"]|['"]$/g, "") });
-        } else {
-          characters.push({ name: key, color: "" });
-        }
-      }
-    }
+    const characters = this.normalizeCharactersValue(charsObj);
     const list = document.createElement("div");
     list.className = "mdsp-chars-list";
     block.appendChild(list);
-    const self = this;
     const render = () => {
       list.innerHTML = "";
       for (let i = 0; i < characters.length; i++) {
-        const c = characters[i];
-        const row = document.createElement("div");
-        row.className = "mdsp-char-row";
-        const bubble = document.createElement("span");
-        bubble.className = "mdsp-char-bubble";
-        if (c.color) {
-          bubble.style.backgroundColor = c.color;
-        } else {
-          bubble.classList.add("mdsp-char-bubble-empty");
-        }
-        const picker = document.createElement("input");
-        picker.type = "color";
-        picker.className = "mdsp-char-picker";
-        let hex6 = "#808080";
-        if (c.color?.startsWith("#"))
-          hex6 = c.color.length >= 7 ? c.color.slice(0, 7) : c.color;
-        picker.value = hex6;
-        bubble.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          picker.click();
-        });
-        picker.addEventListener("input", () => {
-          bubble.style.backgroundColor = picker.value + (c.color?.length === 9 ? c.color.slice(7) : "7D");
-        });
-        picker.addEventListener("change", () => {
-          let alpha = "7D";
-          if (c.color?.startsWith("#") && c.color.length === 9)
-            alpha = c.color.slice(7);
-          characters[i].color = picker.value + alpha;
-          self.saveCharacters(view, characters);
-          bubble.style.backgroundColor = characters[i].color;
-          bubble.classList.remove("mdsp-char-bubble-empty");
-        });
-        row.appendChild(bubble);
-        row.appendChild(picker);
-        const nameEl = document.createElement("span");
-        nameEl.className = "mdsp-char-name";
-        nameEl.textContent = c.name;
-        nameEl.contentEditable = "true";
-        nameEl.spellcheck = false;
-        nameEl.addEventListener("blur", () => {
-          const n = nameEl.textContent?.trim() || "";
-          if (n && n !== c.name) {
-            characters[i].name = n;
-            self.saveCharacters(view, characters);
-          }
-        });
-        nameEl.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            nameEl.blur();
-          }
-        });
-        row.appendChild(nameEl);
-        const del = document.createElement("span");
-        del.className = "mdsp-char-del";
-        del.innerHTML = "&times;";
-        del.title = "Remove";
-        del.addEventListener("click", () => {
-          characters.splice(i, 1);
-          self.saveCharacters(view, characters);
-          render();
-        });
-        row.appendChild(del);
-        list.appendChild(row);
+        list.appendChild(this.createCharacterRow(view, characters, i, render));
       }
-      const add = document.createElement("div");
-      add.className = "mdsp-char-add-btn";
-      add.textContent = "+ Add character";
-      add.addEventListener("click", () => {
+      list.appendChild(this.createAddButton("+ Add character", () => {
         characters.push({ name: "NEW CHARACTER", color: "" });
-        self.saveCharacters(view, characters);
+        this.saveCharacters(view, characters);
         render();
         const last = list.querySelector(".mdsp-char-row:last-of-type .mdsp-char-name");
-        if (last) {
-          last.focus();
-          const r = document.createRange();
-          r.selectNodeContents(last);
-          const s = window.getSelection();
-          s?.removeAllRanges();
-          s?.addRange(r);
-        }
-      });
-      list.appendChild(add);
+        if (last)
+          focusAndSelectAll(last);
+      }));
     };
     render();
     parent.appendChild(block);
   }
+  /** Normalizes raw characters value into a CharacterEntry array. */
+  normalizeCharactersValue(val) {
+    const chars = [];
+    if (typeof val !== "object" || Array.isArray(val) || val === null)
+      return chars;
+    for (const [key, v] of Object.entries(val)) {
+      if (v && typeof v === "object" && v.color) {
+        chars.push({
+          name: key,
+          color: String(v.color).replace(/^['"]|['"]$/g, "")
+        });
+      } else if (typeof v === "string") {
+        chars.push({ name: key, color: v.replace(/^['"]|['"]$/g, "") });
+      } else {
+        chars.push({ name: key, color: "" });
+      }
+    }
+    return chars;
+  }
+  /** Creates a single character row with color bubble, editable name, and delete button. */
+  createCharacterRow(view, characters, index, rerender) {
+    const c = characters[index];
+    const row = document.createElement("div");
+    row.className = "mdsp-char-row";
+    const bubble = document.createElement("span");
+    bubble.className = "mdsp-char-bubble";
+    if (c.color) {
+      bubble.style.backgroundColor = c.color;
+    } else {
+      bubble.classList.add("mdsp-char-bubble-empty");
+    }
+    const picker = document.createElement("input");
+    picker.type = "color";
+    picker.className = "mdsp-char-picker";
+    picker.value = this.toHex6(c.color);
+    bubble.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      picker.click();
+    });
+    picker.addEventListener("input", () => {
+      bubble.style.backgroundColor = picker.value + this.getAlphaSuffix(c.color);
+    });
+    picker.addEventListener("change", () => {
+      characters[index].color = picker.value + this.getAlphaSuffix(c.color);
+      this.saveCharacters(view, characters);
+      bubble.style.backgroundColor = characters[index].color;
+      bubble.classList.remove("mdsp-char-bubble-empty");
+    });
+    row.appendChild(bubble);
+    row.appendChild(picker);
+    const nameEl = document.createElement("span");
+    nameEl.className = "mdsp-char-name";
+    nameEl.textContent = c.name;
+    nameEl.contentEditable = "true";
+    nameEl.spellcheck = false;
+    nameEl.addEventListener("blur", () => {
+      const n = nameEl.textContent?.trim() || "";
+      if (n && n !== c.name) {
+        characters[index].name = n;
+        this.saveCharacters(view, characters);
+      }
+    });
+    nameEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        nameEl.blur();
+      }
+    });
+    row.appendChild(nameEl);
+    row.appendChild(this.createDeleteButton(() => {
+      characters.splice(index, 1);
+      this.saveCharacters(view, characters);
+      rerender();
+    }));
+    return row;
+  }
+  // ─── Shared UI Helpers ───────────────────────────────────────────────────
+  /** Creates a × delete button. */
+  createDeleteButton(onClick) {
+    const del = document.createElement("span");
+    del.className = "mdsp-char-del";
+    del.innerHTML = "&times;";
+    del.title = "Remove";
+    del.addEventListener("click", onClick);
+    return del;
+  }
+  /** Creates an "+ Add ..." button. */
+  createAddButton(text, onClick) {
+    const btn = document.createElement("div");
+    btn.className = text.includes("author") ? "mdsp-author-add-btn" : "mdsp-char-add-btn";
+    btn.textContent = text;
+    btn.addEventListener("click", onClick);
+    return btn;
+  }
+  /** Normalizes a hex color to 6-char format for the color picker. */
+  toHex6(color) {
+    if (!color?.startsWith("#"))
+      return "#808080";
+    return color.length >= 7 ? color.slice(0, 7) : color;
+  }
+  /** Extracts or defaults the alpha channel suffix. */
+  getAlphaSuffix(color) {
+    if (color?.startsWith("#") && color.length === 9)
+      return color.slice(7);
+    return "7D";
+  }
+};
+
+// src/main.ts
+var ScreenplayPlugin = class extends import_obsidian.Plugin {
+  /** Properties panel manager instance. */
+  panelManager;
+  /** Shared frontmatter cache used by the editor extension. */
+  frontmatterCache = {
+    text: "",
+    colors: /* @__PURE__ */ new Map(),
+    endLine: -1,
+    charRange: { start: -1, end: -1 }
+  };
+  /** Cache of line classifications per file. */
+  classificationsCache = /* @__PURE__ */ new Map();
+  /** Flag to prevent panel re-injection during programmatic frontmatter saves. */
+  savingFrontmatter = false;
+  async onload() {
+    console.log("Loading Screenplay MDSP Plugin...");
+    logDebug(this.app, "Plugin onload started");
+    try {
+      this.registerExtensions(["mdsp"], "markdown");
+      logDebug(this.app, "Extensions registered successfully for mdsp");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      logDebug(this.app, "Failed to register extensions: " + msg);
+    }
+    this.panelManager = new PropertiesPanelManager(
+      this.app,
+      (view) => this.getFrontmatter(view),
+      (view, key, val) => this.saveGenericProperty(view, key, val),
+      (view, authors) => this.saveAuthors(view, authors),
+      (view, chars) => this.saveCharacters(view, chars),
+      (file) => this.isScreenplayFile(file),
+      this.savingFrontmatter
+    );
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () => {
+        this.updateEditorClasses();
+        setTimeout(() => this.panelManager.setup(), 200);
+      })
+    );
+    this.registerEvent(
+      this.app.metadataCache.on("changed", () => {
+        this.updateEditorClasses();
+        if (!this.savingFrontmatter) {
+          this.panelManager.setup();
+        }
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on("layout-change", () => {
+        setTimeout(() => this.panelManager.setup(), 150);
+      })
+    );
+    this.app.workspace.onLayoutReady(() => {
+      this.updateEditorClasses();
+      setTimeout(() => this.panelManager.setup(), 500);
+    });
+    this.registerEditorExtension(
+      buildEditorExtension(this.app, (f) => this.isScreenplayFile(f), this.frontmatterCache)
+    );
+    logDebug(this.app, "Editor extension registered successfully");
+    this.registerMarkdownPostProcessor(
+      createPostProcessor(
+        this.app,
+        (file) => this.isScreenplayFile(file),
+        (file) => this.getClassificationsForFile(file)
+      )
+    );
+    logDebug(this.app, "Markdown post-processor registered successfully");
+  }
+  onunload() {
+    console.log("Unloading Screenplay MDSP Plugin...");
+    this.panelManager.teardown();
+    const leaves = this.app.workspace.getLeavesOfType("markdown");
+    for (const leaf of leaves) {
+      const view = leaf.view;
+      if (view instanceof import_obsidian.MarkdownView) {
+        view.contentEl.classList.remove("mdsp-enabled");
+        view.contentEl.querySelectorAll(".mdsp-props-panel").forEach((el) => el.remove());
+      }
+    }
+  }
+  // ─── File Detection ────────────────────────────────────────────────────────
+  /** Determines if a file should be treated as an MDSP screenplay. */
+  isScreenplayFile(file) {
+    if (!file)
+      return false;
+    if (file.extension === "mdsp" || file.name.endsWith(".mdsp.md")) {
+      return true;
+    }
+    const cache = this.app.metadataCache.getFileCache(file);
+    const fm = cache?.frontmatter;
+    if (fm) {
+      if (fm.syntax === "mdsp" || fm.cssclasses === "mdsp")
+        return true;
+      if (Array.isArray(fm.cssclasses) && fm.cssclasses.includes("mdsp"))
+        return true;
+      if (fm.characters !== void 0)
+        return true;
+    }
+    return false;
+  }
+  // ─── Editor Classes ────────────────────────────────────────────────────────
+  /** Toggles the `mdsp-enabled` CSS class on editor containers. */
+  updateEditorClasses() {
+    const leaves = this.app.workspace.getLeavesOfType("markdown");
+    for (const leaf of leaves) {
+      const view = leaf.view;
+      if (view instanceof import_obsidian.MarkdownView) {
+        const enabled = this.isScreenplayFile(view.file);
+        view.contentEl.classList.toggle("mdsp-enabled", enabled);
+      }
+    }
+  }
+  // ─── Classifications Cache ─────────────────────────────────────────────────
+  /** Returns cached line classifications for a file, recomputing if stale. */
+  async getClassificationsForFile(file) {
+    const cached = this.classificationsCache.get(file.path);
+    if (cached && cached.mtime === file.stat.mtime) {
+      return cached.list;
+    }
+    const content = await this.app.vault.cachedRead(file);
+    const list = classifyFile(content);
+    this.classificationsCache.set(file.path, { mtime: file.stat.mtime, list });
+    return list;
+  }
+  // ─── Frontmatter Access ────────────────────────────────────────────────────
+  /** Gets frontmatter from the editor text, falling back to Obsidian's cache. */
+  getFrontmatter(view) {
+    try {
+      const text = view.editor.getValue();
+      if (text) {
+        const fm = parseFrontmatter(text);
+        if (fm && Object.keys(fm).length > 0)
+          return fm;
+      }
+    } catch {
+    }
+    const file = view.file;
+    if (file) {
+      const cache = this.app.metadataCache.getFileCache(file);
+      return cache?.frontmatter || {};
+    }
+    return {};
+  }
+  // ─── Frontmatter Saving ────────────────────────────────────────────────────
+  /**
+   * Serializes and writes frontmatter back to the editor.
+   * Sets a flag to prevent recursive panel re-injection during the save.
+   */
   saveFrontmatterToEditor(view, fm) {
     try {
+      this.savingFrontmatter = true;
+      this.panelManager.savingFrontmatter = true;
       const docText = view.editor.getValue();
       const lines = docText.split(/\r?\n/);
-      let startIdx = -1;
       let endIdx = -1;
       if (lines.length > 0 && cleanBOM(lines[0].trim()) === "---") {
-        startIdx = 0;
         for (let i = 1; i < lines.length; i++) {
           if (lines[i].trim() === "---") {
             endIdx = i;
@@ -1222,46 +1750,17 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
           }
         }
       }
-      const yamlLines = ["---"];
-      for (const [key, value] of Object.entries(fm)) {
-        if (key === "characters") {
-          yamlLines.push("characters:");
-          if (value && typeof value === "object") {
-            for (const [charName, charInfo] of Object.entries(value)) {
-              if (charInfo && typeof charInfo === "object" && charInfo.color) {
-                yamlLines.push(`  ${charName}:`);
-                yamlLines.push(`    color: "${charInfo.color}"`);
-              } else if (typeof charInfo === "string") {
-                yamlLines.push(`  ${charName}: "${charInfo}"`);
-              } else {
-                yamlLines.push(`  ${charName}:`);
-              }
-            }
-          }
-        } else if (key === "authors") {
-          yamlLines.push("authors:");
-          if (Array.isArray(value)) {
-            for (const author of value) {
-              yamlLines.push(`  - ${author}`);
-            }
-          }
-        } else {
-          if (typeof value === "string") {
-            yamlLines.push(`${key}: "${value}"`);
-          } else {
-            yamlLines.push(`${key}: ${value}`);
-          }
-        }
-      }
-      yamlLines.push("---");
-      const newFrontmatterText = yamlLines.join("\n");
-      if (startIdx !== -1 && endIdx !== -1) {
-        view.editor.replaceRange(newFrontmatterText + "\n", { line: 0, ch: 0 }, { line: endIdx + 1, ch: 0 });
+      const newFrontmatter = serializeFrontmatter(fm);
+      if (endIdx !== -1) {
+        view.editor.replaceRange(newFrontmatter + "\n", { line: 0, ch: 0 }, { line: endIdx + 1, ch: 0 });
       } else {
-        view.editor.replaceRange(newFrontmatterText + "\n\n", { line: 0, ch: 0 });
+        view.editor.replaceRange(newFrontmatter + "\n\n", { line: 0, ch: 0 });
       }
     } catch (e) {
       console.error("Failed to save frontmatter to editor:", e);
+    } finally {
+      this.savingFrontmatter = false;
+      this.panelManager.savingFrontmatter = false;
     }
   }
   saveGenericProperty(view, key, newValue) {
@@ -1282,502 +1781,5 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
     const fm = this.getFrontmatter(view);
     fm.authors = authors;
     this.saveFrontmatterToEditor(view, fm);
-  }
-  isScreenplayFile(file) {
-    if (!file)
-      return false;
-    if (file.extension === "mdsp" || file.name.endsWith(".mdsp.md")) {
-      return true;
-    }
-    const cache = this.app.metadataCache.getFileCache(file);
-    const frontmatter = cache?.frontmatter;
-    if (frontmatter) {
-      if (frontmatter.syntax === "mdsp" || frontmatter.cssclasses === "mdsp") {
-        return true;
-      }
-      if (Array.isArray(frontmatter.cssclasses) && frontmatter.cssclasses.includes("mdsp")) {
-        return true;
-      }
-      if (frontmatter.characters !== void 0) {
-        return true;
-      }
-    }
-    return false;
-  }
-  updateEditorClasses() {
-    const leaves = this.app.workspace.getLeavesOfType("markdown");
-    for (const leaf of leaves) {
-      const view = leaf.view;
-      if (view instanceof import_obsidian.MarkdownView) {
-        const file = view.file;
-        const enabled = this.isScreenplayFile(file);
-        const containerEl = view.contentEl;
-        if (enabled) {
-          containerEl.classList.add("mdsp-enabled");
-        } else {
-          containerEl.classList.remove("mdsp-enabled");
-        }
-      }
-    }
-  }
-  buildEditorExtension() {
-    const pluginInstance = this;
-    return [
-      import_view.ViewPlugin.fromClass(
-        class {
-          decorations;
-          classificationCache = /* @__PURE__ */ new WeakMap();
-          constructor(view) {
-            this.decorations = this.buildDecorations(view);
-          }
-          update(update) {
-            if (update.docChanged || update.viewportChanged || update.selectionSet) {
-              this.decorations = this.buildDecorations(update.view);
-            }
-          }
-          getClassifications(doc) {
-            let cached = this.classificationCache.get(doc);
-            if (!cached) {
-              cached = classifyFile(doc.toString());
-              this.classificationCache.set(doc, cached);
-            }
-            return cached;
-          }
-          buildDecorations(view) {
-            logDebug(pluginInstance.app, `buildDecorations started for doc length=${view.state.doc.length}`);
-            try {
-              const activeFile = pluginInstance.app.workspace.getActiveFile();
-              let hasCharactersBlock = false;
-              try {
-                if (view.state.doc.length > 0 && cleanBOM(view.state.doc.line(1).text.trim()) === "---") {
-                  const linesToScan = Math.min(view.state.doc.lines, 200);
-                  for (let i = 2; i <= linesToScan; i++) {
-                    const line = view.state.doc.line(i).text.trim();
-                    if (line === "---")
-                      break;
-                    if (/^characters\s*:/i.test(line)) {
-                      hasCharactersBlock = true;
-                      break;
-                    }
-                  }
-                }
-              } catch (e) {
-              }
-              const isMdsp = pluginInstance.isScreenplayFile(activeFile) || hasCharactersBlock;
-              if (!isMdsp) {
-                return import_view.Decoration.none;
-              }
-              const doc = view.state.doc;
-              let currentFrontmatterText = "";
-              try {
-                let endFM = -1;
-                const maxLines = Math.min(doc.lines, 100);
-                if (doc.lines > 0 && cleanBOM(doc.line(1).text.trim()) === "---") {
-                  for (let i = 2; i <= maxLines; i++) {
-                    if (doc.line(i).text.trim() === "---") {
-                      endFM = i;
-                      break;
-                    }
-                  }
-                }
-                if (endFM !== -1) {
-                  const linesArr = [];
-                  for (let i = 1; i <= endFM; i++) {
-                    linesArr.push(doc.line(i).text);
-                  }
-                  currentFrontmatterText = linesArr.join("\n");
-                }
-              } catch (e) {
-              }
-              if (currentFrontmatterText !== pluginInstance.lastFrontmatterText) {
-                pluginInstance.lastFrontmatterText = currentFrontmatterText;
-                pluginInstance.cachedColors = parseCharactersFromDoc(doc);
-                pluginInstance.cachedEndFrontmatterLine = getEndFrontmatterLine(doc);
-                pluginInstance.cachedCharRange = getCharactersBlockRange(doc);
-                logDebug(pluginInstance.app, `Frontmatter text changed, re-parsed frontmatter cache. Colors count=${pluginInstance.cachedColors.size}`);
-              }
-              const colors = pluginInstance.cachedColors;
-              const endFrontmatterLine = pluginInstance.cachedEndFrontmatterLine;
-              const charRange = pluginInstance.cachedCharRange;
-              const builder = new import_state.RangeSetBuilder();
-              const classifications = this.getClassifications(view.state.doc);
-              for (const { from, to } of view.visibleRanges) {
-                const startLine = view.state.doc.lineAt(from).number;
-                const endLine = view.state.doc.lineAt(to).number;
-                for (let l = startLine; l <= endLine; l++) {
-                  const line = view.state.doc.line(l);
-                  const text = line.text;
-                  if (endFrontmatterLine !== -1 && l >= 1 && l <= endFrontmatterLine) {
-                    let lineClass2 = "";
-                    if (l === 1 || l === endFrontmatterLine) {
-                      lineClass2 = "cm-mdsp-property-divider";
-                    } else {
-                      lineClass2 = "cm-mdsp-property-line";
-                    }
-                    builder.add(
-                      line.from,
-                      line.from,
-                      import_view.Decoration.line({
-                        attributes: { class: lineClass2 }
-                      })
-                    );
-                    const isLineInCharacters = charRange.start !== -1 && charRange.end !== -1 && l >= charRange.start && l <= charRange.end;
-                    const isCursorOnLine = view.state.selection.ranges.some((r) => {
-                      try {
-                        const fromLine = view.state.doc.lineAt(r.from).number;
-                        const toLine = view.state.doc.lineAt(r.to).number;
-                        return fromLine === toLine && fromLine === l;
-                      } catch (e) {
-                        return false;
-                      }
-                    });
-                    if (isLineInCharacters) {
-                      const colorMatch = text.match(/#([a-fA-F0-9]{3,8})/);
-                      const charListMatch = text.match(/^(\s*-\s*)(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s+(.+)$/);
-                      if (charListMatch) {
-                        const prefixLen = charListMatch[1].length;
-                        const colorLen = charListMatch[2].length;
-                        if (!isCursorOnLine) {
-                          builder.add(
-                            line.from,
-                            line.from + prefixLen + colorLen + 1,
-                            import_view.Decoration.replace({})
-                          );
-                        }
-                        if (colorMatch) {
-                          const color = colorMatch[0];
-                          builder.add(
-                            line.from + prefixLen + colorLen + 1,
-                            line.from + prefixLen + colorLen + 1,
-                            import_view.Decoration.widget({
-                              widget: new ColorBubbleWidget(color, view),
-                              side: -1
-                            })
-                          );
-                        }
-                        builder.add(
-                          line.from + prefixLen + colorLen + 1,
-                          line.to,
-                          import_view.Decoration.mark({
-                            class: "cm-mdsp-property-value"
-                          })
-                        );
-                        continue;
-                      }
-                      const charMapMatch = text.match(/^(\s*)([^:]+)\s*:\s*(['"]?#?[a-fA-F0-9]{3,8}['"]?)\s*$/);
-                      if (charMapMatch) {
-                        const prefixLen = charMapMatch[1].length;
-                        const keyLen = charMapMatch[2].length;
-                        if (colorMatch) {
-                          const color = colorMatch[0];
-                          builder.add(
-                            line.from + prefixLen,
-                            line.from + prefixLen,
-                            import_view.Decoration.widget({
-                              widget: new ColorBubbleWidget(color, view),
-                              side: -1
-                            })
-                          );
-                        }
-                        builder.add(
-                          line.from + prefixLen,
-                          line.from + prefixLen + keyLen,
-                          import_view.Decoration.mark({
-                            class: "cm-mdsp-property-value"
-                          })
-                        );
-                        const colonIndex = text.indexOf(":");
-                        if (!isCursorOnLine) {
-                          builder.add(
-                            line.from + colonIndex,
-                            line.to,
-                            import_view.Decoration.replace({})
-                          );
-                        } else {
-                          builder.add(
-                            line.from + colonIndex + 1,
-                            line.to,
-                            import_view.Decoration.mark({
-                              class: "cm-mdsp-property-key"
-                            })
-                          );
-                        }
-                        continue;
-                      }
-                      const charListNoColorMatch = text.match(/^(\s*-\s*)(.+)$/);
-                      if (charListNoColorMatch) {
-                        const prefixLen = charListNoColorMatch[1].length;
-                        const name = charListNoColorMatch[2].trim();
-                        if (name && name !== "---") {
-                          if (!isCursorOnLine) {
-                            builder.add(
-                              line.from,
-                              line.from + prefixLen,
-                              import_view.Decoration.replace({})
-                            );
-                          }
-                          builder.add(
-                            line.from + prefixLen,
-                            line.from + prefixLen,
-                            import_view.Decoration.widget({
-                              widget: new ColorBubbleWidget("", view),
-                              side: -1
-                            })
-                          );
-                          builder.add(
-                            line.from + prefixLen,
-                            line.to,
-                            import_view.Decoration.mark({
-                              class: "cm-mdsp-property-value"
-                            })
-                          );
-                          continue;
-                        }
-                      }
-                      const charMapNoColorMatch = text.match(/^(\s*)([^:]+)\s*:\s*$/);
-                      if (charMapNoColorMatch) {
-                        const prefixLen = charMapNoColorMatch[1].length;
-                        const keyLen = charMapNoColorMatch[2].length;
-                        const name = charMapNoColorMatch[2].trim();
-                        if (name && name !== "characters" && name !== "---") {
-                          builder.add(
-                            line.from + prefixLen,
-                            line.from + prefixLen,
-                            import_view.Decoration.widget({
-                              widget: new ColorBubbleWidget("", view),
-                              side: -1
-                            })
-                          );
-                          builder.add(
-                            line.from + prefixLen,
-                            line.from + prefixLen + keyLen,
-                            import_view.Decoration.mark({
-                              class: "cm-mdsp-property-value"
-                            })
-                          );
-                          const colonIndex = text.indexOf(":");
-                          if (!isCursorOnLine) {
-                            builder.add(
-                              line.from + colonIndex,
-                              line.to,
-                              import_view.Decoration.replace({})
-                            );
-                          }
-                          continue;
-                        }
-                      }
-                    }
-                    const keyValMatch = text.match(/^(\s*-?\s*)([a-zA-Z0-9_-]+)\s*:(.*)$/);
-                    if (keyValMatch) {
-                      const prefixLen = keyValMatch[1].length;
-                      const keyLen = keyValMatch[2].length;
-                      builder.add(
-                        line.from + prefixLen,
-                        line.from + prefixLen + keyLen + 1,
-                        import_view.Decoration.mark({
-                          class: "cm-mdsp-property-key"
-                        })
-                      );
-                      if (keyValMatch[3].trim().length > 0) {
-                        builder.add(
-                          line.from + prefixLen + keyLen + 1,
-                          line.to,
-                          import_view.Decoration.mark({
-                            class: "cm-mdsp-property-value"
-                          })
-                        );
-                      }
-                    } else {
-                      const listItemMatch = text.match(/^(\s*-\s*)(.+)$/);
-                      if (listItemMatch) {
-                        const prefixLen = listItemMatch[1].length;
-                        builder.add(
-                          line.from + prefixLen,
-                          line.to,
-                          import_view.Decoration.mark({
-                            class: "cm-mdsp-property-value"
-                          })
-                        );
-                      }
-                    }
-                    continue;
-                  }
-                  const classification = classifications[l - 1];
-                  let lineClass = "";
-                  if (classification) {
-                    switch (classification.type) {
-                      case "scene-heading":
-                        lineClass = "cm-mdsp-scene-heading";
-                        break;
-                      case "scene-heading-sub":
-                        lineClass = "cm-mdsp-scene-heading-sub";
-                        break;
-                      case "scene-transition":
-                        lineClass = "cm-mdsp-scene-transition";
-                        break;
-                      case "dialog-character":
-                        lineClass = "cm-mdsp-dialog-heading";
-                        break;
-                      case "dialog":
-                        lineClass = "cm-mdsp-dialog";
-                        break;
-                      case "dialog-parenthetical":
-                        lineClass = "cm-mdsp-dialog-parenthetical";
-                        break;
-                      case "action":
-                        lineClass = "cm-mdsp-action";
-                        break;
-                      case "centered-action":
-                        lineClass = "cm-mdsp-centered";
-                        break;
-                    }
-                  }
-                  if (lineClass) {
-                    builder.add(
-                      line.from,
-                      line.from,
-                      import_view.Decoration.line({
-                        attributes: { class: lineClass }
-                      })
-                    );
-                    const isCursorOnLine = view.state.selection.ranges.some((r) => {
-                      try {
-                        const fromLine = view.state.doc.lineAt(r.from).number;
-                        const toLine = view.state.doc.lineAt(r.to).number;
-                        return fromLine === toLine && fromLine === l;
-                      } catch (e) {
-                        return false;
-                      }
-                    });
-                    if (!isCursorOnLine && classification) {
-                      const type = classification.type;
-                      if (type === "scene-heading" || type === "scene-heading-sub") {
-                        const match2 = text.match(/^#+\s*/);
-                        if (match2) {
-                          builder.add(line.from, line.from + match2[0].length, import_view.Decoration.replace({}));
-                        }
-                      } else if (type === "scene-transition") {
-                        const match2 = text.match(/^:\s*/);
-                        if (match2) {
-                          builder.add(line.from, line.from + match2[0].length, import_view.Decoration.replace({}));
-                        }
-                      } else if (type === "dialog-character") {
-                        if (text.startsWith("@")) {
-                          builder.add(line.from, line.from + 1, import_view.Decoration.replace({}));
-                        }
-                      } else if (type === "centered-action") {
-                        const matchStart = text.match(/^:\s*/);
-                        const matchEnd = text.match(/\s*:$/);
-                        if (matchStart) {
-                          builder.add(line.from, line.from + matchStart[0].length, import_view.Decoration.replace({}));
-                        }
-                        if (matchEnd && line.to - matchEnd[0].length > line.from) {
-                          builder.add(line.to - matchEnd[0].length, line.to, import_view.Decoration.replace({}));
-                        }
-                      }
-                    }
-                  }
-                  const regex = /@\(([^)]+)\)|@(\w+)|\[([^\]]+)\]\(([^)]+)\)/g;
-                  let match;
-                  while ((match = regex.exec(text)) !== null) {
-                    const fullMatch = match[0];
-                    const matchStart = line.from + match.index;
-                    const matchEnd = matchStart + fullMatch.length;
-                    let characterName = "";
-                    let prefixLen = 0;
-                    let suffixLen = 0;
-                    if (match[1]) {
-                      characterName = match[1];
-                      prefixLen = 2;
-                      suffixLen = 1;
-                    } else if (match[2]) {
-                      characterName = match[2];
-                      prefixLen = 1;
-                      suffixLen = 0;
-                    } else if (match[4]) {
-                      const alias = match[3];
-                      characterName = match[4];
-                      prefixLen = 1;
-                      suffixLen = fullMatch.length - prefixLen - alias.length;
-                    }
-                    if (characterName) {
-                      const lowerName = characterName.trim().toLowerCase();
-                      const color = colors.get(lowerName);
-                      if (color) {
-                        const isCursorOnMatch = view.state.selection.ranges.some((r) => {
-                          try {
-                            const fromLine = view.state.doc.lineAt(r.from).number;
-                            const toLine = view.state.doc.lineAt(r.to).number;
-                            return fromLine === toLine && r.from <= matchEnd && r.to >= matchStart;
-                          } catch (e) {
-                            return false;
-                          }
-                        });
-                        if (!isCursorOnMatch) {
-                          if (prefixLen > 0) {
-                            builder.add(
-                              matchStart,
-                              matchStart + prefixLen,
-                              import_view.Decoration.replace({})
-                            );
-                          }
-                          builder.add(
-                            matchStart + prefixLen,
-                            matchEnd - suffixLen,
-                            import_view.Decoration.mark({
-                              attributes: {
-                                style: `background-color: ${color};`
-                              },
-                              class: "cm-mdsp-character-highlight"
-                            })
-                          );
-                          if (suffixLen > 0) {
-                            builder.add(
-                              matchEnd - suffixLen,
-                              matchEnd,
-                              import_view.Decoration.replace({})
-                            );
-                          }
-                        } else {
-                          builder.add(
-                            matchStart,
-                            matchEnd,
-                            import_view.Decoration.mark({
-                              class: "cm-mdsp-character-active"
-                            })
-                          );
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-              const result = builder.finish();
-              logDebug(pluginInstance.app, `buildDecorations finished successfully with size=${result.size}`);
-              return result;
-            } catch (err) {
-              logDebug(pluginInstance.app, `ERROR in buildDecorations: ${err.message}
-Stack: ${err.stack}`);
-              return import_view.Decoration.none;
-            }
-          }
-        },
-        {
-          decorations: (v) => v.decorations
-        }
-      ),
-      import_view.EditorView.domEventHandlers({
-        click(event, view) {
-          const colors = pluginInstance.cachedColors;
-          const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-          if (pos !== null && isPosInCharacterMatch(pos, view.state.doc, colors)) {
-            event.preventDefault();
-            event.stopPropagation();
-            return true;
-          }
-          return false;
-        }
-      })
-    ];
   }
 };
