@@ -130,7 +130,7 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
           this._activeData = "";
         }
         else {
-          this._activeData += ` ${line.trim()}`;
+          this._activeData += `\n${line.trim()}`;
         }
         break;
     }
@@ -139,44 +139,43 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
   }
 }
 
-export function isCharacterLine(trimmed: string): boolean {
-  if (
-    trimmed.startsWith("/") ||
-    trimmed.startsWith("#") ||
-    trimmed.startsWith(":") ||
-    trimmed.startsWith(">")
-  ) {
-    return false;
+export function isCharacterLine(raw: string): boolean {
+  const trimmed = raw.trim();
+
+  // Exclude control lines
+  if (/^[\/#:>]/.test(trimmed)) return false;
+
+  const isAllCaps = (s: string) => /[A-Z]/.test(s) && !/[a-z]/.test(s);
+
+  // If the whole line is exactly an alias link optionally followed by a parenthetical
+  const exactAliasRegex = /^ \[(.+?)\] \((.+?)\)(?:\s*\((.+?)\))?$/;
+  const exactAliasMatch = trimmed.match(exactAliasRegex);
+  if (exactAliasMatch) {
+    const [, , , parenRaw] = exactAliasMatch;
+    if (!parenRaw) return true; // [Alias](Character Name) allowed in any case
+    return isAllCaps(parenRaw.trim()); // trailing parenthetical must be ALL CAPS
   }
 
-  // 1. Check [alias](reference) format
-  const aliasMatch = trimmed.match(/^\[(.+?)\]\((.+?)\)(?:\s*\((.+?)\))?$/);
-  if (aliasMatch) {
-    const alias = aliasMatch[1].trim();
-    const ref = aliasMatch[2].trim();
-    const paren = aliasMatch[3] ? aliasMatch[3].trim() : "";
-    
-    const isAliasCaps = /[A-Z]/.test(alias) && !/[a-z]/.test(alias);
-    const isRefCaps = /[A-Z]/.test(ref) && !/[a-z]/.test(ref);
-    const isParenCaps = paren === "" || (/[A-Z]/.test(paren) && !/[a-z]/.test(paren));
-    
-    return isAliasCaps && isRefCaps && isParenCaps;
-  }
+  // If the whole line is exactly @(Name) allow any case
+  const exactAtParenRegex = /^@\((.+?)\)$/;
+  if (exactAtParenRegex.test(trimmed)) return true;
 
-  // 2. Check @(name) format
-  const parenMatch = trimmed.match(/^@\((.+?)\)$/);
-  if (parenMatch) {
-    const name = parenMatch[1].trim();
-    return /[A-Z]/.test(name) && !/[a-z]/.test(name);
-  }
+  // If the whole line is exactly @Name allow any case
+  const exactAtNameRegex = /^@([^\s]+)$/;
+  if (exactAtNameRegex.test(trimmed)) return true;
 
-  // 3. Check @name format
-  if (trimmed.startsWith("@")) {
-    const name = trimmed.slice(1).trim();
-    if (name.length === 0) return false;
-    return /[A-Z]/.test(name) && !/[a-z]/.test(name);
-  }
+  // Remove any inline constructs and check the remaining surrounding text
+  const constructRegex = / \[(.+?) \] \((.+?) \)| @\((.+?) \)| @([^\s] +) /g;
+  const withoutConstructs = trimmed.replace(constructRegex, '').trim();
 
-  // 4. Plain text / ALL CAPS format
-  return /[A-Z]/.test(trimmed) && !/[a-z]/.test(trimmed);
+  // If nothing remains after removing constructs then the line is valid
+  if (withoutConstructs === '') return true;
+
+  // If remaining text contains no letters then treat it as valid
+  const lettersOnly = withoutConstructs.replace(/[^A-Za-z]/g, '');
+  if (lettersOnly === '') return true;
+
+  // Any surrounding text must be ALL CAPS
+  return isAllCaps(withoutConstructs);
 }
+

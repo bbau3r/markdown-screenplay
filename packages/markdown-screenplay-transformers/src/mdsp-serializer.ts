@@ -34,11 +34,7 @@ export function serializeToMdsp(elements: ScreenplayElement[]): string {
         lines.push(`: ${el.text}`);
         break;
       case 'dialog-character':
-        if (el.text.startsWith('[')) {
-          lines.push(el.text);
-        } else {
-          lines.push(`@${el.text}`);
-        }
+        lines.push(el.text);
         break;
       case 'dialog':
       case 'dialog-parenthetical':

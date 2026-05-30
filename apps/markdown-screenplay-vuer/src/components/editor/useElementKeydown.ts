@@ -59,9 +59,6 @@ export function useElementKeydown(
           const textAfterCursor = fullText.slice(offset).trim();
 
           let charText = textBeforeCursor;
-          if (charText.startsWith("@")) {
-            charText = charText.slice(1).trim();
-          }
 
           emit("update:type", { id: element.id, type: "dialog-character" });
           emit("update:text", { id: element.id, text: charText });
@@ -104,12 +101,6 @@ export function useElementKeydown(
           newType = "scene-heading";
         } else if (prefix === ":") {
           newType = "scene-transition";
-        } else if (prefix.startsWith("@")) {
-          newType = "dialog-character";
-          newText = prefix.slice(1).trim() + remainingText;
-        } else if (prefix.startsWith("[") && /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(prefix)) {
-          newType = "dialog-character";
-          newText = prefix + remainingText;
         }
 
         if (newType !== null) {

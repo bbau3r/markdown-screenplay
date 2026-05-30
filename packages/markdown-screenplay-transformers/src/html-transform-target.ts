@@ -58,7 +58,7 @@ export class HTMLTransformTarget implements TransformTarget<string> {
     if (isCentered)
       this._output += `<p class="centered">${this.formatLine(line.slice(2, -2).trim())}</p>\n`;
     else
-      this._output += `<p class="section">${this.formatLine(line)}</p>\n`;
+      this._output += `<p class="section">${this.formatLine(line).split('\n').join('<br>')}</p>\n`;
   }
 
   private openActiveSection(): void {

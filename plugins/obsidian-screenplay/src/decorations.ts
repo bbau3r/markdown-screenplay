@@ -410,8 +410,6 @@ function hideSyntaxPrefix(
   } else if (type === "scene-transition") {
     const match = text.match(/^:\s*/);
     if (match) builder.add(line.from, line.from + match[0].length, Decoration.replace({}));
-  } else if (type === "dialog-character") {
-    if (text.startsWith("@")) builder.add(line.from, line.from + 1, Decoration.replace({}));
   } else if (type === "centered-action") {
     const matchStart = text.match(/^>\s*/);
     const matchEnd = text.match(/\s*<$/);

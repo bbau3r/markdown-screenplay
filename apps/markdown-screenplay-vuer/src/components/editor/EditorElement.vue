@@ -7,6 +7,7 @@ import {
   onBeforeUnmount,
   nextTick,
 } from "vue";
+import { isCharacterLine } from "@transformers";
 import type { ScreenplayElement, ScreenplayElementType } from "@transformers";
 import { getCaretOffset, setCursorOffset } from "./caret";
 import { useElementKeydown } from "./useElementKeydown";
@@ -296,6 +297,12 @@ function handleFocus() {
 
 function handleBlur() {
   flushDebounce();
+  if (props.element.type === "dialog-character") {
+    const currentText = editorRef.value?.innerText.trim() || "";
+    if (!isCharacterLine(currentText)) {
+      emit("update:type", { id: props.element.id, type: "action" });
+    }
+  }
 }
 </script>
 
@@ -551,7 +558,6 @@ function handleBlur() {
 .editor-element__content.dialog-heading {
   margin-left: var(--sd-dialog-heading-padding, 10rem);
   margin-right: var(--sd-dialog-heading-padding, 10rem);
-  text-transform: uppercase;
   font-weight: 800;
 }
 
