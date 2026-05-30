@@ -1,11 +1,22 @@
-import type { SceneData, TransformResult, TransformTarget } from ".";
+import { SceneData, TransformResult, TransformTarget } from ".";
 import { YAMLParser } from "./yaml-parser";
+
+enum ScreenplayActiveType {
+  None = 0,
+  Dialog,
+  Scene,
+  Dialog_Character,
+  Action,
+  Transition,
+}
 
 export class MarkupTransformer<T extends TransformTarget<U>, U> {
 
   private _handleYaml: boolean = false;
   private _yamlParser: YAMLParser;
   private _scenes: SceneData[] = [];
+  private _activeType: ScreenplayActiveType = ScreenplayActiveType.None;
+  private _activeData: string = "";
 
   /**
    * @param _target Transform Target
@@ -27,6 +38,10 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
   }
 
   public compose(): TransformResult<U> {
+    // Ensure any active data is processed at the end of the input
+    this.processLine("");
+
+    // Compose the final output using the TransformTarget and YAML data
     const yamlData = this._yamlParser.ParsedYaml;
     const output = this._target.GenerateOutput(yamlData);
     const scenes = this._scenes;
@@ -34,37 +49,92 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
     return { output, yamlData, scenes }
   }
 
-  private appendScene(line: string, handleNewScene: boolean) {
-    this._target.ProcessSceneHeading(line, handleNewScene);
-    const sceneName = line.slice(1).trim();
-    this._scenes.push({
-      name: sceneName,
-      ...(handleNewScene ? { isSub: true } : {})
-    })
-  }
-
   private processLine(line: string) {
-    switch (true) {
-      case line.length === 0:
-        return;
-      case line.startsWith("##"):
-        this.appendScene(line, false);
+    const isBlankLine = line.trim().length === 0;
+    const initialLine = this._activeType === ScreenplayActiveType.None && this._activeData.trim().length === 0;
+
+    if (initialLine) {
+      switch (true) {
+        case line.match(/^#{1,6} /) !== null:
+        case line.startsWith("# "):
+          this._activeType = ScreenplayActiveType.Scene;
+          break;
+        case line.startsWith(": ") && !line.endsWith(" :"):
+          this._activeType = ScreenplayActiveType.Transition;
+          break;
+        case line.startsWith("@"):
+          this._activeType = ScreenplayActiveType.Dialog_Character;
+          break;
+        default:
+          this._activeType = ScreenplayActiveType.Action;
+          break;
+      }
+    }
+
+    switch (this._activeType) {
+      case ScreenplayActiveType.Scene:
+        if (initialLine) {
+          const indentCount = line.match(/^#+/)![0].length;
+          const extractedLine = line.slice(indentCount).trim();
+          this._scenes.push({
+            name: extractedLine,
+            ...(indentCount === 1 ? { isSub: true } : {})
+          });
+          console.log(this._scenes);
+        }
+        else if (isBlankLine) {
+          const previousScene = this._scenes[this._scenes.length - 1];
+          this._target.ProcessSceneHeading(previousScene.name, previousScene.isSub === true);
+        }
+        else {
+          this._scenes[this._scenes.length - 1].name += ` ${line.trim()}`;
+        }
         break;
-      case line.startsWith("#"):
-        this.appendScene(line, true);
+      case ScreenplayActiveType.Transition:
+        if (initialLine) {
+          const extractedLine = line.slice(2).trim();
+          this._activeData = extractedLine;
+        }
+        else if (isBlankLine) {
+          this._target.ProcessSceneTransition(this._activeData);
+          this._activeData = "";
+        }
+        else {
+          this._activeData += ` ${line.trim()}`;
+        }
         break;
-      case line.startsWith(":"):
-        this._target.ProcessSceneTransition(line);
+      case ScreenplayActiveType.Dialog_Character:
+        if (initialLine) {
+          this._activeData = line.trim();
+        }
+        else if (isBlankLine) {
+          this._target.ProcessDefault(this._activeData);
+          this._activeData = "";
+        }
+        else {
+          this._target.ProcessDialogCharacter(this._activeData);
+          this._activeData = line.trim();
+          this._activeType = ScreenplayActiveType.Dialog;
+        }
         break;
-      case line.startsWith(">>"):
-        this._target.ProcessDialog(line);
+      case ScreenplayActiveType.Dialog:
+        this._target.ProcessDialog(this._activeData);
+        this._activeData = line.trim();
         break;
-      case line.startsWith(">"):
-        this._target.ProcessDialogCharacter(line);
-        break;
-      default:
-        this._target.ProcessDefault(line);
+      case ScreenplayActiveType.Action:
+        if (initialLine) {
+          this._activeData = line.trim();
+        }
+        else if (isBlankLine) {
+          this._target.ProcessDefault(this._activeData);
+          this._activeData = "";
+        }
+        else {
+          this._activeData += ` ${line.trim()}`;
+        }
         break;
     }
+
+    if (isBlankLine) this._activeType = ScreenplayActiveType.None;
   }
 }
