@@ -141,41 +141,32 @@ export class MarkupTransformer<T extends TransformTarget<U>, U> {
 
 export function isCharacterLine(raw: string): boolean {
   const trimmed = raw.trim();
+  if (trimmed === "") return false;
 
-  // Exclude control lines
+  // Exclude control lines that start with these characters
   if (/^[\/#:>]/.test(trimmed)) return false;
 
-  const isAllCaps = (s: string) => /[A-Z]/.test(s) && !/[a-z]/.test(s);
+  // Helpers and precompiled regexes
+  const hasLetter = /[A-Za-z]/;
+  const hasLower = /[a-z]/;
+  const constructReg = / \[([^\] ]+)\] \(([^)]+)\)(?:\s*\(([^)]+)\))?|@\(([^)]+)\)|@([^\s()]+)/g;
 
-  // If the whole line is exactly an alias link optionally followed by a parenthetical
-  const exactAliasRegex = /^ \[(.+?)\] \((.+?)\)(?:\s*\((.+?)\))?$/;
-  const exactAliasMatch = trimmed.match(exactAliasRegex);
-  if (exactAliasMatch) {
-    const [, , , parenRaw] = exactAliasMatch;
-    if (!parenRaw) return true; // [Alias](Character Name) allowed in any case
-    return isAllCaps(parenRaw.trim()); // trailing parenthetical must be ALL CAPS
-  }
+  // Normalize constructs to uppercase inner text in one pass
+  const normalized = trimmed.replace(constructReg, (_m, alias, ref, paren, atParen, atName) => {
+    if (alias !== undefined && ref !== undefined) {
+      const ALIAS = alias.trim().toUpperCase();
+      const REF = ref.trim().toUpperCase();
+      const PAREN = paren ? paren.trim().toUpperCase() : undefined;
+      return PAREN ? `[${ALIAS}](${REF}) (${PAREN})` : `[${ALIAS}](${REF})`;
+    }
+    if (atParen !== undefined) return `@(${atParen.trim().toUpperCase()})`;
+    if (atName !== undefined) return `@${atName.trim().toUpperCase()}`;
+    return _m;
+  });
 
-  // If the whole line is exactly @(Name) allow any case
-  const exactAtParenRegex = /^@\((.+?)\)$/;
-  if (exactAtParenRegex.test(trimmed)) return true;
+  // If there are no letters at all, it's not a character line
+  if (!hasLetter.test(normalized)) return false;
 
-  // If the whole line is exactly @Name allow any case
-  const exactAtNameRegex = /^@([^\s]+)$/;
-  if (exactAtNameRegex.test(trimmed)) return true;
-
-  // Remove any inline constructs and check the remaining surrounding text
-  const constructRegex = / \[(.+?) \] \((.+?) \)| @\((.+?) \)| @([^\s] +) /g;
-  const withoutConstructs = trimmed.replace(constructRegex, '').trim();
-
-  // If nothing remains after removing constructs then the line is valid
-  if (withoutConstructs === '') return true;
-
-  // If remaining text contains no letters then treat it as valid
-  const lettersOnly = withoutConstructs.replace(/[^A-Za-z]/g, '');
-  if (lettersOnly === '') return true;
-
-  // Any surrounding text must be ALL CAPS
-  return isAllCaps(withoutConstructs);
+  // Final ALL CAPS check: must contain at least one uppercase and no lowercase
+  return /[A-Z]/.test(normalized) && !hasLower.test(normalized);
 }
-

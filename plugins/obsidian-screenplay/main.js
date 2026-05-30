@@ -465,32 +465,33 @@ var ScreenplayActiveType;
   ScreenplayActiveType2[ScreenplayActiveType2["Action"] = 4] = "Action";
   ScreenplayActiveType2[ScreenplayActiveType2["Transition"] = 5] = "Transition";
 })(ScreenplayActiveType || (ScreenplayActiveType = {}));
-function isCharacterLine(trimmed) {
-  if (trimmed.startsWith("/") || trimmed.startsWith("#") || trimmed.startsWith(":") || trimmed.startsWith(">")) {
+function isCharacterLine(raw) {
+  const trimmed = raw.trim();
+  if (/^[\/#:>]/.test(trimmed))
     return false;
+  const isAllCaps = (s) => /[A-Z]/.test(s) && !/[a-z]/.test(s);
+  const exactAliasRegex = /^ \[(.+?)\] \((.+?)\)(?:\s*\((.+?)\))?$/;
+  const exactAliasMatch = trimmed.match(exactAliasRegex);
+  if (exactAliasMatch) {
+    const [, , , parenRaw] = exactAliasMatch;
+    if (!parenRaw)
+      return true;
+    return isAllCaps(parenRaw.trim());
   }
-  const aliasMatch = trimmed.match(/^\[(.+?)\]\((.+?)\)(?:\s*\((.+?)\))?$/);
-  if (aliasMatch) {
-    const alias = aliasMatch[1].trim();
-    const ref = aliasMatch[2].trim();
-    const paren = aliasMatch[3] ? aliasMatch[3].trim() : "";
-    const isAliasCaps = /[A-Z]/.test(alias) && !/[a-z]/.test(alias);
-    const isRefCaps = /[A-Z]/.test(ref) && !/[a-z]/.test(ref);
-    const isParenCaps = paren === "" || /[A-Z]/.test(paren) && !/[a-z]/.test(paren);
-    return isAliasCaps && isRefCaps && isParenCaps;
-  }
-  const parenMatch = trimmed.match(/^@\((.+?)\)$/);
-  if (parenMatch) {
-    const name = parenMatch[1].trim();
-    return /[A-Z]/.test(name) && !/[a-z]/.test(name);
-  }
-  if (trimmed.startsWith("@")) {
-    const name = trimmed.slice(1).trim();
-    if (name.length === 0)
-      return false;
-    return /[A-Z]/.test(name) && !/[a-z]/.test(name);
-  }
-  return /[A-Z]/.test(trimmed) && !/[a-z]/.test(trimmed);
+  const exactAtParenRegex = /^@\((.+?)\)$/;
+  if (exactAtParenRegex.test(trimmed))
+    return true;
+  const exactAtNameRegex = /^@([^\s]+)$/;
+  if (exactAtNameRegex.test(trimmed))
+    return true;
+  const constructRegex = / \[(.+?) \] \((.+?) \)| @\((.+?) \)| @([^\s] +) /g;
+  const withoutConstructs = trimmed.replace(constructRegex, "").trim();
+  if (withoutConstructs === "")
+    return true;
+  const lettersOnly = withoutConstructs.replace(/[^A-Za-z]/g, "");
+  if (lettersOnly === "")
+    return true;
+  return isAllCaps(withoutConstructs);
 }
 
 // src/classifier.ts
