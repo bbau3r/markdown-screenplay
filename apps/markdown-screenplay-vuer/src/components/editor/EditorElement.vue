@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
+import {
+  ref,
+  computed,
+  watch,
+  onMounted,
+  onBeforeUnmount,
+  nextTick,
+} from "vue";
 import type { ScreenplayElement, ScreenplayElementType } from "@transformers";
 import { getCaretOffset, setCursorOffset } from "./caret";
 import { useElementKeydown } from "./useElementKeydown";
@@ -81,8 +88,12 @@ watch(
 
       if (isFocused) {
         const oldOffset = getCaretOffset(editorRef.value);
-        const isInto = newType === "dialog-parenthetical" && oldType !== "dialog-parenthetical";
-        const isOut = oldType === "dialog-parenthetical" && newType !== "dialog-parenthetical";
+        const isInto =
+          newType === "dialog-parenthetical" &&
+          oldType !== "dialog-parenthetical";
+        const isOut =
+          oldType === "dialog-parenthetical" &&
+          newType !== "dialog-parenthetical";
 
         let newOffset = oldOffset;
         if (isInto) {
@@ -156,7 +167,7 @@ const typeOptions = [
   },
   {
     value: "dialog-character" as ScreenplayElementType,
-    label: ">",
+    label: "@",
     title: "Character",
     description: "Name of the character speaking",
     color: "dialog-character",
@@ -170,7 +181,7 @@ const typeOptions = [
   },
   {
     value: "dialog" as ScreenplayElementType,
-    label: ">>",
+    label: "DLG",
     title: "Dialogue",
     description: "Lines of dialogue spoken by a character",
     color: "dialog",
@@ -222,12 +233,10 @@ function handleRemoveElement() {
   emit("delete", props.element.id);
 }
 
-
-
 function handleInput(e: Event) {
   const target = e.target as HTMLDivElement;
   const text = target.innerText;
-  
+
   let typeChanged = false;
   // Smart dialogue typing auto-convert to parenthetical if typing opens with a parenthesis
   if (props.element.type === "dialog" && text.startsWith("(")) {
@@ -264,7 +273,7 @@ const handleKeydown = useElementKeydown(
     onUpdateLastEmittedText: (text) => {
       lastEmittedText = text;
     },
-  }
+  },
 );
 
 function handleClick(event: MouseEvent) {

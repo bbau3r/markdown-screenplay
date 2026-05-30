@@ -40,7 +40,7 @@ export class HTMLTransformTarget implements TransformTarget<string> {
   }
   ProcessSceneTransition(line: string): void {
     this.closeActiveSection();
-    this._output += `<p class="scene-transition">${line.slice(1).toUpperCase()}:</p>\n`;
+    this._output += `<p class="scene-transition">${line.toUpperCase()}:</p>\n`;
   }
   ProcessDialog(line: string): void {
     const isParenthetical: boolean = line.startsWith("(");

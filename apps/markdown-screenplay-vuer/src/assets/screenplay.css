@@ -25,7 +25,7 @@
 }
 
 .sp-container {
-  font-family: Courier, sans-serif;
+  font-family: Courier, "Courier New", monospace;
   font-size: var(--sd-font-size);
   padding: var(--sd-general-padding, 3rem);
 }
@@ -61,6 +61,11 @@
 .dialog-heading {
   margin-left: var(--sd-dialog-heading-padding);
   margin-right: var(--sd-dialog-heading-padding);
+}
+.centered {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
 }
 .title-section {
   h1 {
