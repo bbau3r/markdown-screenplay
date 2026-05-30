@@ -13,7 +13,7 @@ describe("editorStore", () => {
     expect(store.elements[0].type).toBe("scene-heading");
     expect(store.elements[0].text).toBe("INT. HOUSE - DAY");
     expect(store.elements[1].type).toBe("dialog-character");
-    expect(store.elements[1].text).toBe("@JOHN");
+    expect(store.elements[1].text).toBe("JOHN");
     expect(store.elements[2].type).toBe("dialog");
     expect(store.elements[2].text).toBe("Hello world!");
 
@@ -204,7 +204,7 @@ describe("editorStore", () => {
 
     // Non-text action: update type
     store.updateElementType(firstId, "scene-heading");
-    
+
     // Changing type should push the typed text to undoStack (making it length 2)
     expect(store.undoStack.length).toBe(2);
     expect(store.undoStack[1].elements[0].text).toBe("Line 1 typed");
@@ -227,7 +227,7 @@ describe("editorStore", () => {
       // Force non-text change to push snapshots
       store.updateElementType(firstId, i % 2 === 0 ? "scene-heading" : "action");
     }
-    
+
     // Stack should be capped at 100
     expect(store.undoStack.length).toBe(100);
   });
@@ -246,7 +246,7 @@ describe("editorStore", () => {
 
     // Type text immediately on the new element
     store.updateElementText(newEl.id, "ne 1 edited");
-    
+
     // Typing text should NOT push a new snapshot because it is bundled!
     expect(store.undoStack.length).toBe(1);
 
@@ -261,19 +261,19 @@ describe("editorStore", () => {
     const store = useEditorStore();
 
     store.loadFromRawContent("Line 1");
-    
+
     const meta = { title: "My Script", version: "1", authors: ["Me"] };
-    
+
     // Call setMetadata first time
     store.setMetadata(meta);
     expect(store.undoStack.length).toBe(1); // 1 snapshot pushed
 
     // Call setMetadata second time with the same values
     store.setMetadata({ ...meta });
-    
+
     // Should NOT push a duplicate snapshot
     expect(store.undoStack.length).toBe(1);
-    
+
     // Call setMetadata third time with different metadata
     store.setMetadata({ title: "My Script Changed", version: "1", authors: ["Me"] });
     expect(store.undoStack.length).toBe(2); // new snapshot pushed

@@ -35,10 +35,14 @@ export function useElementKeydown(
       flushDebounce();
     }
 
-    // 1. Enter key: split element or convert empty dialog to action, or action with character prefix to dialog-character
+    // 1. Enter key: split element or convert empty non-action elements to action, or action with character prefix to dialog-character
     if (event.key === "Enter" && !event.shiftKey) {
-      if (element.type === "dialog" && editorRef.value && editorRef.value.innerText.trim() === "") {
+      if (editorRef.value && editorRef.value.innerText.trim() === "" && element.type !== "action") {
         event.preventDefault();
+        if (options?.onUpdateLastEmittedText) {
+          options.onUpdateLastEmittedText("");
+        }
+        emit("update:text", { id: element.id, text: "" });
         emit("update:type", { id: element.id, type: "action" });
         return;
       }
@@ -153,8 +157,15 @@ export function useElementKeydown(
           }
         } else if (event.key === "Backspace" && editorRef.value && isCaretAtStart(editorRef.value)) {
           // 3. Only merge if no text is selected (caret is collapsed) on Backspace
-          if (element.text === "" || element.type === "action") {
+          const isDOMEmpty = editorRef.value.innerText.trim() === "";
+          if (isDOMEmpty || element.type === "action") {
             event.preventDefault();
+            if (isDOMEmpty) {
+              if (options?.onUpdateLastEmittedText) {
+                options.onUpdateLastEmittedText("");
+              }
+              emit("update:text", { id: element.id, text: "" });
+            }
             emit("merge-previous", element.id);
           } else {
             event.preventDefault();

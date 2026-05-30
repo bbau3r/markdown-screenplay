@@ -416,7 +416,7 @@ describe("EditorElement.vue Backspace Demotion", () => {
     expect(emittedText).toBeTruthy();
     expect(emittedText![0][0]).toEqual({
       id: "el-typing-alias",
-      text: "[BOB](Robert) (cont'd) ",
+      text: "[BOB](Robert) (cont'd)",
     });
   });
 
@@ -447,14 +447,14 @@ describe("EditorElement.vue Backspace Demotion", () => {
     expect(emittedText).toBeTruthy();
     expect(emittedText![0][0]).toEqual({
       id: "el-enter-char",
-      text: "@JOHN",
+      text: "JOHN",
     });
 
     const emittedSplit = wrapper.emitted("split");
     expect(emittedSplit).toBeTruthy();
     expect(emittedSplit![0][0]).toEqual({
       id: "el-enter-char",
-      text1: "@JOHN",
+      text1: "JOHN",
       text2: "",
     });
   });
@@ -494,6 +494,55 @@ describe("EditorElement.vue Backspace Demotion", () => {
     expect(emittedSplit![0][0]).toEqual({
       id: "el-enter-alias",
       text1: "[BOB](Robert) (cont'd)",
+      text2: "",
+    });
+  });
+
+  it("converts dialog-character to action when Enter is pressed on empty content", async () => {
+    const el: ScreenplayElement = {
+      id: "el-empty-char-enter",
+      type: "dialog-character",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+    (contentDiv.element as HTMLDivElement).innerText = "";
+
+    await contentDiv.trigger("keydown", { key: "Enter" });
+
+    const emittedType = wrapper.emitted("update:type");
+    expect(emittedType).toBeTruthy();
+    expect(emittedType![0][0]).toEqual({
+      id: "el-empty-char-enter",
+      type: "action",
+    });
+
+    const emittedText = wrapper.emitted("update:text");
+    expect(emittedText).toBeTruthy();
+    expect(emittedText![0][0]).toEqual({
+      id: "el-empty-char-enter",
+      text: "",
+    });
+  });
+
+  it("splits empty action and emits split when Enter is pressed on empty action", async () => {
+    const el: ScreenplayElement = {
+      id: "el-empty-act-enter",
+      type: "action",
+      text: "",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+    (contentDiv.element as HTMLDivElement).innerText = "";
+
+    await contentDiv.trigger("keydown", { key: "Enter" });
+
+    expect(wrapper.emitted("update:type")).toBeFalsy();
+    const emittedSplit = wrapper.emitted("split");
+    expect(emittedSplit).toBeTruthy();
+    expect(emittedSplit![0][0]).toEqual({
+      id: "el-empty-act-enter",
+      text1: "",
       text2: "",
     });
   });
