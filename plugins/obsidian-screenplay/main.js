@@ -4,11 +4,9 @@ If you want to view the source, please visit the github repository of this monor
 */
 
 "use strict";
-var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -22,14 +20,6 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/main.ts
@@ -38,7 +28,7 @@ __export(main_exports, {
   default: () => ScreenplayPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian = require("obsidian");
+var import_obsidian2 = require("obsidian");
 
 // src/utils.ts
 function logDebug(app, msg) {
@@ -505,7 +495,7 @@ function detectBlockStart(trimmed, nextLine) {
   if (/^#{1,6} /.test(trimmed)) {
     return "scene";
   }
-  if (trimmed.startsWith(">") && !trimmed.endsWith("<")) {
+  if (trimmed.startsWith(": ") && !trimmed.endsWith(" :")) {
     return "transition";
   }
   if (trimmed.startsWith("@") || /^\[.+?\]\(.+?\)(?:\s*\(.+?\))?$/.test(trimmed)) {
@@ -526,7 +516,7 @@ function resolveLineType(activeState, trimmed, isSubScene) {
       return trimmed.startsWith("(") ? "dialog-parenthetical" : "dialog";
     case "action":
     default:
-      if (trimmed.startsWith(">") && trimmed.endsWith("<")) {
+      if (trimmed.startsWith(": ") && trimmed.endsWith(" :")) {
         return "centered-action";
       }
       return "action";
@@ -713,10 +703,9 @@ Stack: ${err.stack}` : String(err);
         }
         /** Determines whether the current document should receive MDSP decorations. */
         shouldDecorate(view, isScreenplay) {
-          const activeFile = view?.state?.field?.(void 0, false);
           let activeFileRef = null;
           try {
-            activeFileRef = app.workspace?.getActiveFile?.() ?? null;
+            activeFileRef = app.workspace.getActiveFile();
           } catch {
           }
           if (isScreenplay(activeFileRef))
@@ -994,12 +983,13 @@ function isPosInCharacterMatch(pos, doc, colors) {
 }
 
 // src/post-processor.ts
+var import_obsidian = require("obsidian");
 function createPostProcessor(app, isScreenplayFile, getClassifications) {
   return async (el, ctx) => {
     logDebug(app, `Markdown post-processor running for ${ctx.sourcePath}`);
     try {
       const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
-      if (!(file instanceof (await import("obsidian")).TFile) || !isScreenplayFile(file)) {
+      if (!(file instanceof import_obsidian.TFile) || !isScreenplayFile(file)) {
         return;
       }
       const cache = app.metadataCache.getFileCache(file);
@@ -1586,7 +1576,7 @@ var PropertiesPanelManager = class {
 };
 
 // src/main.ts
-var ScreenplayPlugin = class extends import_obsidian.Plugin {
+var ScreenplayPlugin = class extends import_obsidian2.Plugin {
   /** Properties panel manager instance. */
   panelManager;
   /** Shared frontmatter cache used by the editor extension. */
@@ -1661,7 +1651,7 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
     const leaves = this.app.workspace.getLeavesOfType("markdown");
     for (const leaf of leaves) {
       const view = leaf.view;
-      if (view instanceof import_obsidian.MarkdownView) {
+      if (view instanceof import_obsidian2.MarkdownView) {
         view.contentEl.classList.remove("mdsp-enabled");
         view.contentEl.querySelectorAll(".mdsp-props-panel").forEach((el) => el.remove());
       }
@@ -1693,7 +1683,7 @@ var ScreenplayPlugin = class extends import_obsidian.Plugin {
     const leaves = this.app.workspace.getLeavesOfType("markdown");
     for (const leaf of leaves) {
       const view = leaf.view;
-      if (view instanceof import_obsidian.MarkdownView) {
+      if (view instanceof import_obsidian2.MarkdownView) {
         const enabled = this.isScreenplayFile(view.file);
         view.contentEl.classList.toggle("mdsp-enabled", enabled);
       }

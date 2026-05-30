@@ -120,12 +120,9 @@ export function buildEditorExtension(
           view: EditorView,
           isScreenplay: (file: import("obsidian").TFile | null) => boolean,
         ): boolean {
-          const activeFile = (view as any)?.state?.field?.(undefined, false);
-          // Use the pluginInstance's isScreenplayFile, plus a quick doc scan for characters:
           let activeFileRef: import("obsidian").TFile | null = null;
           try {
-            // Access via Obsidian's workspace
-            activeFileRef = (app as any).workspace?.getActiveFile?.() ?? null;
+            activeFileRef = app.workspace.getActiveFile();
           } catch { /* ignore */ }
 
           if (isScreenplay(activeFileRef)) return true;

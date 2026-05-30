@@ -7,8 +7,8 @@
  * and character name highlighting.
  */
 
-import type { App, TFile } from "obsidian";
-import type { MarkdownPostProcessorContext } from "obsidian";
+import { TFile } from "obsidian";
+import type { App, MarkdownPostProcessorContext } from "obsidian";
 import type { LineClassification, CharacterColorMap } from "./types";
 import { CLASSIFICATION_CSS_CLASS, CHARACTER_REF_REGEX } from "./types";
 import { parseCharacterColorsFromCache } from "./frontmatter";
@@ -35,7 +35,7 @@ export function createPostProcessor(
 
     try {
       const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
-      if (!(file instanceof (await import("obsidian")).TFile) || !isScreenplayFile(file)) {
+      if (!(file instanceof TFile) || !isScreenplayFile(file)) {
         return;
       }
 
