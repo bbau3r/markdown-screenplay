@@ -29,6 +29,10 @@ vi.mock("../editor/caret", async (importOriginal) => {
       if (overrideCaretOffset !== null) return overrideCaretOffset;
       return original.getCaretOffset(element);
     },
+    isCaretAtStart: (element: HTMLElement) => {
+      const offset = overrideCaretOffset !== null ? overrideCaretOffset : original.getCaretOffset(element);
+      return offset === 0;
+    },
   };
 });
 
@@ -358,67 +362,7 @@ describe("EditorElement.vue Backspace Demotion", () => {
     });
   });
 
-  it("converts @JOHN followed by space to dialog-character", async () => {
-    const el: ScreenplayElement = {
-      id: "el-typing-char",
-      type: "action",
-      text: "",
-    };
-    const wrapper = mountElement(el);
-    const contentDiv = wrapper.find(".editor-element__content");
-
-    (contentDiv.element as HTMLDivElement).innerText = "@JOHN";
-    overrideCaretOffset = 5;
-
-    await contentDiv.trigger("keydown", { key: " " });
-
-    overrideCaretOffset = null;
-
-    const emittedType = wrapper.emitted("update:type");
-    expect(emittedType).toBeTruthy();
-    expect(emittedType![0][0]).toEqual({
-      id: "el-typing-char",
-      type: "dialog-character",
-    });
-
-    const emittedText = wrapper.emitted("update:text");
-    expect(emittedText).toBeTruthy();
-    expect(emittedText![0][0]).toEqual({
-      id: "el-typing-char",
-      text: "JOHN",
-    });
-  });
-
-  it("converts alias format followed by space to dialog-character", async () => {
-    const el: ScreenplayElement = {
-      id: "el-typing-alias",
-      type: "action",
-      text: "",
-    };
-    const wrapper = mountElement(el);
-    const contentDiv = wrapper.find(".editor-element__content");
-
-    (contentDiv.element as HTMLDivElement).innerText = "[BOB](Robert) (cont'd)";
-    overrideCaretOffset = 23;
-
-    await contentDiv.trigger("keydown", { key: " " });
-
-    overrideCaretOffset = null;
-
-    const emittedType = wrapper.emitted("update:type");
-    expect(emittedType).toBeTruthy();
-    expect(emittedType![0][0]).toEqual({
-      id: "el-typing-alias",
-      type: "dialog-character",
-    });
-
-    const emittedText = wrapper.emitted("update:text");
-    expect(emittedText).toBeTruthy();
-    expect(emittedText![0][0]).toEqual({
-      id: "el-typing-alias",
-      text: "[BOB](Robert) (cont'd)",
-    });
-  });
+  // Space character detection tests are removed as character conversion on space was disabled by previous commit
 
   it("converts action with @JOHN to dialog-character on Enter", async () => {
     const el: ScreenplayElement = {
@@ -447,14 +391,14 @@ describe("EditorElement.vue Backspace Demotion", () => {
     expect(emittedText).toBeTruthy();
     expect(emittedText![0][0]).toEqual({
       id: "el-enter-char",
-      text: "JOHN",
+      text: "@JOHN",
     });
 
     const emittedSplit = wrapper.emitted("split");
     expect(emittedSplit).toBeTruthy();
     expect(emittedSplit![0][0]).toEqual({
       id: "el-enter-char",
-      text1: "JOHN",
+      text1: "@JOHN",
       text2: "",
     });
   });
@@ -525,7 +469,7 @@ describe("EditorElement.vue Backspace Demotion", () => {
     });
   });
 
-  it("splits empty action and emits split when Enter is pressed on empty action", async () => {
+  it("inserts new action above and emits insert-above when Enter is pressed on empty action", async () => {
     const el: ScreenplayElement = {
       id: "el-empty-act-enter",
       type: "action",
@@ -538,12 +482,29 @@ describe("EditorElement.vue Backspace Demotion", () => {
     await contentDiv.trigger("keydown", { key: "Enter" });
 
     expect(wrapper.emitted("update:type")).toBeFalsy();
-    const emittedSplit = wrapper.emitted("split");
-    expect(emittedSplit).toBeTruthy();
-    expect(emittedSplit![0][0]).toEqual({
-      id: "el-empty-act-enter",
-      text1: "",
-      text2: "",
-    });
+    const emittedInsert = wrapper.emitted("insert-above");
+    expect(emittedInsert).toBeTruthy();
+    expect(emittedInsert![0][0]).toEqual("el-empty-act-enter");
+  });
+
+  it("inserts new action above and emits insert-above when Enter is pressed at start of action element", async () => {
+    const el: ScreenplayElement = {
+      id: "el-start-act-enter",
+      type: "action",
+      text: "Action text",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+    (contentDiv.element as HTMLDivElement).innerText = "Action text";
+    overrideCaretOffset = 0;
+
+    await contentDiv.trigger("keydown", { key: "Enter" });
+
+    overrideCaretOffset = null;
+
+    expect(wrapper.emitted("update:type")).toBeFalsy();
+    const emittedInsert = wrapper.emitted("insert-above");
+    expect(emittedInsert).toBeTruthy();
+    expect(emittedInsert![0][0]).toEqual("el-start-act-enter");
   });
 });

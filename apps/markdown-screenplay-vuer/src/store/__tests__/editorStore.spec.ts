@@ -13,7 +13,7 @@ describe("editorStore", () => {
     expect(store.elements[0].type).toBe("scene-heading");
     expect(store.elements[0].text).toBe("INT. HOUSE - DAY");
     expect(store.elements[1].type).toBe("dialog-character");
-    expect(store.elements[1].text).toBe("JOHN");
+    expect(store.elements[1].text).toBe("@JOHN");
     expect(store.elements[2].type).toBe("dialog");
     expect(store.elements[2].text).toBe("Hello world!");
 
@@ -80,15 +80,13 @@ describe("editorStore", () => {
     // Call ensurePlaceholders (normally run by EditorContent watcher)
     store.ensurePlaceholders();
 
-    // Should insert empty action at start and end
-    expect(store.elements.length).toBe(4);
-    expect(store.elements[0].type).toBe("action");
-    expect(store.elements[0].text).toBe("");
-    expect(store.elements[1].type).toBe("scene-heading");
-    expect(store.elements[3].type).toBe("action");
-    expect(store.elements[3].text).toBe("");
+    // Should insert empty action at end
+    expect(store.elements.length).toBe(3);
+    expect(store.elements[0].type).toBe("scene-heading");
+    expect(store.elements[2].type).toBe("action");
+    expect(store.elements[2].text).toBe("");
 
-    // Serialized output should strip the empty top and bottom placeholders!
+    // Serialized output should strip the empty bottom placeholder!
     expect(store.serializedMdsp).toBe("# INT. HOUSE - DAY\n\nLine 1");
   });
 

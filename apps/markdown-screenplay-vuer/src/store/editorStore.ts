@@ -288,6 +288,17 @@ export const useEditorStore = defineStore("editor", () => {
   }
 
   /**
+   * Insert a new element before the element with the given ID.
+   */
+  function insertElementBefore(beforeId: string, type: ScreenplayElementType, text: string) {
+    const idx = elements.value.findIndex((e) => e.id === beforeId);
+    if (idx >= 0) {
+      return addElement(type, text, idx);
+    }
+    return addElement(type, text);
+  }
+
+  /**
    * Select an element (or deselect with null).
    */
   function selectElement(id: string | null, isShift: boolean = false, isCtrl: boolean = false) {
@@ -420,11 +431,6 @@ export const useEditorStore = defineStore("editor", () => {
       return;
     }
 
-    // Ensure first element is an empty action
-    if (elements.value[0].text !== "" || elements.value[0].type !== "action") {
-      elements.value.unshift(createElement("action", ""));
-    }
-
     // Ensure last element is an empty action
     const lastIdx = elements.value.length - 1;
     if (elements.value[lastIdx].text !== "" || elements.value[lastIdx].type !== "action") {
@@ -535,6 +541,7 @@ export const useEditorStore = defineStore("editor", () => {
     updateElementType,
     removeElement,
     insertElementAfter,
+    insertElementBefore,
     selectElement,
     deleteSelectedElements,
     splitElement,

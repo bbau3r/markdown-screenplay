@@ -130,6 +130,13 @@ function handleDelete(id: string) {
   }
 }
 
+function handleInsertAbove(id: string) {
+  const newEl = editorStore.insertElementBefore(id, "action", "");
+  if (newEl) {
+    focusElement(newEl.id, "start");
+  }
+}
+
 function handleUndo() {
   editorStore.undo();
   restoreHistoryFocus();
@@ -154,7 +161,7 @@ function handleRedo() {
         :key="element.id"
         :element="element"
         :is-selected="editorStore.selectedElementIds.includes(element.id)"
-        :is-placeholder="index === 0 || index === editorStore.elements.length - 1"
+        :is-placeholder="index === editorStore.elements.length - 1"
         @select="handleSelect"
         @update:text="handleUpdateText"
         @update:type="handleUpdateType"
@@ -162,6 +169,7 @@ function handleRedo() {
         @merge-previous="handleMergePrevious"
         @navigate="handleNavigate"
         @delete="handleDelete"
+        @insert-above="handleInsertAbove"
       />
     </div>
 

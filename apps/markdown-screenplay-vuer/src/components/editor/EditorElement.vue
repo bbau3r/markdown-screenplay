@@ -35,6 +35,7 @@ const emit = defineEmits<{
     payload: { id: string; direction: "up" | "down"; isShift: boolean },
   ): void;
   (e: "delete", id: string): void;
+  (e: "insert-above", id: string): void;
 }>();
 
 const editorRef = ref<HTMLDivElement | null>(null);

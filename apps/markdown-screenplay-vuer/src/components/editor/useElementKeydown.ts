@@ -18,6 +18,7 @@ export function useElementKeydown(
     (e: "update:text", payload: { id: string; text: string }): void;
     (e: "merge-previous", id: string): void;
     (e: "navigate", payload: { id: string; direction: "up" | "down"; isShift: boolean }): void;
+    (e: "insert-above", id: string): void;
   },
   options?: KeydownOptions
 ) {
@@ -36,7 +37,6 @@ export function useElementKeydown(
       flushDebounce();
     }
 
-    // 1. Enter key: split element or convert empty non-action elements to action, or action with character prefix to dialog-character
     if (event.key === "Enter" && !event.shiftKey) {
       if (editorRef.value && editorRef.value.innerText.trim() === "" && element.type !== "action") {
         event.preventDefault();
@@ -45,6 +45,12 @@ export function useElementKeydown(
         }
         emit("update:text", { id: element.id, text: "" });
         emit("update:type", { id: element.id, type: "action" });
+        return;
+      }
+
+      if (editorRef.value && isCaretAtStart(editorRef.value)) {
+        event.preventDefault();
+        emit("insert-above", element.id);
         return;
       }
 

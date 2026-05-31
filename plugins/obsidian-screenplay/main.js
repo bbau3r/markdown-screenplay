@@ -467,31 +467,29 @@ var ScreenplayActiveType;
 })(ScreenplayActiveType || (ScreenplayActiveType = {}));
 function isCharacterLine(raw) {
   const trimmed = raw.trim();
+  if (trimmed === "")
+    return false;
   if (/^[\/#:>]/.test(trimmed))
     return false;
-  const isAllCaps = (s) => /[A-Z]/.test(s) && !/[a-z]/.test(s);
-  const exactAliasRegex = /^ \[(.+?)\] \((.+?)\)(?:\s*\((.+?)\))?$/;
-  const exactAliasMatch = trimmed.match(exactAliasRegex);
-  if (exactAliasMatch) {
-    const [, , , parenRaw] = exactAliasMatch;
-    if (!parenRaw)
-      return true;
-    return isAllCaps(parenRaw.trim());
-  }
-  const exactAtParenRegex = /^@\((.+?)\)$/;
-  if (exactAtParenRegex.test(trimmed))
-    return true;
-  const exactAtNameRegex = /^@([^\s]+)$/;
-  if (exactAtNameRegex.test(trimmed))
-    return true;
-  const constructRegex = / \[(.+?) \] \((.+?) \)| @\((.+?) \)| @([^\s] +) /g;
-  const withoutConstructs = trimmed.replace(constructRegex, "").trim();
-  if (withoutConstructs === "")
-    return true;
-  const lettersOnly = withoutConstructs.replace(/[^A-Za-z]/g, "");
-  if (lettersOnly === "")
-    return true;
-  return isAllCaps(withoutConstructs);
+  const hasLetter = /[A-Za-z]/;
+  const hasLower = /[a-z]/;
+  const constructReg = /\[([^\]]+)\]\(([^)]+)\)(?:\s*\(([^)]+)\))?|@\(([^)]+)\)|@([^\s()]+)/g;
+  const normalized = trimmed.replace(constructReg, (_m, alias, ref, paren, atParen, atName) => {
+    if (alias !== void 0 && ref !== void 0) {
+      const ALIAS = alias.trim().toUpperCase();
+      const REF = ref.trim().toUpperCase();
+      const PAREN = paren ? paren.trim().toUpperCase() : void 0;
+      return PAREN ? `[${ALIAS}](${REF}) (${PAREN})` : `[${ALIAS}](${REF})`;
+    }
+    if (atParen !== void 0)
+      return `@(${atParen.trim().toUpperCase()})`;
+    if (atName !== void 0)
+      return `@${atName.trim().toUpperCase()}`;
+    return _m;
+  });
+  if (!hasLetter.test(normalized))
+    return false;
+  return /[A-Z]/.test(normalized) && !hasLower.test(normalized);
 }
 
 // src/classifier.ts
