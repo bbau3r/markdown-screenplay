@@ -507,4 +507,32 @@ describe("EditorElement.vue Backspace Demotion", () => {
     expect(emittedInsert).toBeTruthy();
     expect(emittedInsert![0][0]).toEqual("el-start-act-enter");
   });
+
+  it("inserts newline inside the element when Shift+Enter is pressed", async () => {
+    const el: ScreenplayElement = {
+      id: "el-shift-enter",
+      type: "action",
+      text: "Line 1",
+    };
+    const wrapper = mountElement(el);
+    const contentDiv = wrapper.find(".editor-element__content");
+    (contentDiv.element as HTMLDivElement).innerText = "Line 1";
+    overrideCaretOffset = 6; // at end of "Line 1"
+
+    await contentDiv.trigger("keydown", { key: "Enter", shiftKey: true });
+
+    overrideCaretOffset = null;
+
+    // Shift+Enter should emit update:text with the newline
+    const emittedText = wrapper.emitted("update:text");
+    expect(emittedText).toBeTruthy();
+    expect(emittedText![0][0]).toEqual({
+      id: "el-shift-enter",
+      text: "Line 1\n",
+    });
+
+    // Should NOT emit split or insert-above
+    expect(wrapper.emitted("split")).toBeFalsy();
+    expect(wrapper.emitted("insert-above")).toBeFalsy();
+  });
 });

@@ -1,17 +1,11 @@
 import { nextTick } from "vue";
 
 /**
- * Gets the current caret character offset within an HTML element.
+ * Gets the caret character offset of a specific node within an HTML element.
  */
-export function getCaretOffset(element: HTMLElement): number {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return 0;
-  const range = selection.getRangeAt(0);
-
+export function getCaretOffsetOfNode(node: Node, offsetInNode: number, element: HTMLElement | null): number {
+  if (!element) return 0;
   let offset = 0;
-  const node = range.startContainer;
-  const targetOffset = range.startOffset;
-
   if (!element.contains(node) && element !== node) {
     return 0;
   }
@@ -21,7 +15,7 @@ export function getCaretOffset(element: HTMLElement): number {
   while (walker.nextNode()) {
     const currentNode = walker.currentNode;
     if (currentNode === node) {
-      offset += targetOffset;
+      offset += offsetInNode;
       return offset;
     }
     offset += currentNode.textContent?.length || 0;
@@ -29,7 +23,7 @@ export function getCaretOffset(element: HTMLElement): number {
 
   if (node.nodeType === Node.ELEMENT_NODE) {
     let childOffset = 0;
-    for (let i = 0; i < targetOffset && i < node.childNodes.length; i++) {
+    for (let i = 0; i < offsetInNode && i < node.childNodes.length; i++) {
       const child = node.childNodes[i];
       if (element.contains(child)) {
         childOffset += child.textContent?.length || 0;
@@ -39,6 +33,16 @@ export function getCaretOffset(element: HTMLElement): number {
   }
 
   return offset;
+}
+
+/**
+ * Gets the current caret character offset within an HTML element.
+ */
+export function getCaretOffset(element: HTMLElement): number {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return 0;
+  const range = selection.getRangeAt(0);
+  return getCaretOffsetOfNode(range.startContainer, range.startOffset, element);
 }
 
 /**

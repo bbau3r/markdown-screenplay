@@ -36,6 +36,8 @@ const emit = defineEmits<{
   ): void;
   (e: "delete", id: string): void;
   (e: "insert-above", id: string): void;
+  (e: "drag-start", id: string): void;
+  (e: "drag-enter", id: string): void;
 }>();
 
 const editorRef = ref<HTMLDivElement | null>(null);
@@ -288,6 +290,19 @@ function handleClick(event: MouseEvent) {
   });
 }
 
+function handleMousedown(event: MouseEvent) {
+  const target = event.target as HTMLElement;
+  if (!target.closest(".editor-element__content")) {
+    if (event.button === 0) {
+      emit("drag-start", props.element.id);
+    }
+  }
+}
+
+function handleMouseenter() {
+  emit("drag-enter", props.element.id);
+}
+
 function handleFocus() {
   emit("select", {
     id: props.element.id,
@@ -315,10 +330,13 @@ function handleBlur() {
       { 'editor-element--placeholder': isPlaceholder },
     ]"
     :data-id="element.id"
+    contenteditable="false"
     @click="handleClick"
+    @mousedown="handleMousedown"
+    @mouseenter="handleMouseenter"
   >
     <!-- Tag Column -->
-    <div class="editor-element__tag-col">
+    <div class="editor-element__tag-col" contenteditable="false">
       <v-menu location="bottom start" transition="scale-transition">
         <template v-slot:activator="{ props: menuProps }">
           <button
@@ -399,6 +417,7 @@ function handleBlur() {
     <!-- Content area: Always editable -->
     <div
       ref="editorRef"
+      tabindex="-1"
       contenteditable="true"
       :class="['editor-element__content', elementClass]"
       @input="handleInput"

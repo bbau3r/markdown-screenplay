@@ -37,6 +37,26 @@ export function useElementKeydown(
       flushDebounce();
     }
 
+    if (event.key === "Enter" && event.shiftKey) {
+      event.preventDefault();
+      if (editorRef.value) {
+        const offset = getCaretOffset(editorRef.value);
+        const text = editorRef.value.innerText;
+        const newText = text.slice(0, offset) + "\n" + text.slice(offset);
+        editorRef.value.innerText = newText;
+        if (options?.onUpdateLastEmittedText) {
+          options.onUpdateLastEmittedText(newText);
+        }
+        emit("update:text", { id: element.id, text: newText });
+        nextTick(() => {
+          if (editorRef.value) {
+            setCursorOffset(editorRef.value, offset + 1);
+          }
+        });
+      }
+      return;
+    }
+
     if (event.key === "Enter" && !event.shiftKey) {
       if (editorRef.value && editorRef.value.innerText.trim() === "" && element.type !== "action") {
         event.preventDefault();

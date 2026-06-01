@@ -289,4 +289,118 @@ describe("editorStore", () => {
 
     expect(store.serializedMdsp).toBe("# INT. HOUSE - DAY\n\n[BOB](Robert) (cont'd)\nHello world!");
   });
+
+  it("pastes single line and multi-line text correctly", () => {
+    setActivePinia(createPinia());
+    const store = useEditorStore();
+
+    store.loadFromRawContent("# INT. HOUSE - DAY\n\nLine 1");
+    expect(store.elements.length).toBe(2);
+
+    const firstId = store.elements[0].id;
+    store.selectElement(firstId);
+
+    // Paste single line text
+    store.handlePaste(" - EXT");
+    expect(store.elements[0].text).toBe("INT. HOUSE - DAY- EXT");
+
+    // Paste multi-line text
+    store.handlePaste("\n\n@JOHN\nHello");
+    // Should split the scene heading and insert @JOHN and Hello
+    expect(store.elements.length).toBe(4);
+    expect(store.elements[0].text).toBe("INT. HOUSE - DAY- EXT");
+    expect(store.elements[1].type).toBe("dialog-character");
+    expect(store.elements[1].text).toBe("@JOHN");
+    expect(store.elements[2].type).toBe("dialog");
+    expect(store.elements[2].text).toBe("Hello");
+    expect(store.elements[3].text).toBe("Line 1");
+  });
+
+  it("deletes text range across multiple elements and merges remaining texts correctly", () => {
+    setActivePinia(createPinia());
+    const store = useEditorStore();
+
+    store.loadFromRawContent("# INT. HOUSE - DAY\n\nLine 1\n\nLine 2\n\nLine 3");
+    expect(store.elements.length).toBe(4);
+
+    const startId = store.elements[1].id; // "Line 1"
+    const endId = store.elements[3].id;   // "Line 3"
+
+    // Delete from index 4 of "Line 1" (after "Line") to index 4 of "Line 3" (after "Line")
+    // This should delete " 1", "Line 2", and "Line ", then merge "Line" and " 3" into "Line 3"!
+    store.deleteTextRange(startId, 4, endId, 4);
+
+    expect(store.elements.length).toBe(2); 
+    expect(store.elements[0].text).toBe("INT. HOUSE - DAY");
+    expect(store.elements[1].text).toBe("Line 3");
+  });
+
+  it("recreates element tags when pasting into an empty element", () => {
+    setActivePinia(createPinia());
+    const store = useEditorStore();
+
+    // Load with a single empty action line
+    store.loadFromRawContent("");
+    expect(store.elements.length).toBe(1);
+    expect(store.elements[0].type).toBe("action");
+    expect(store.elements[0].text).toBe("");
+
+    const activeId = store.elements[0].id;
+    store.selectElement(activeId);
+
+    // Paste a scene heading and dialogue (separated properly by newlines)
+    store.handlePaste("# INT. KITCHEN - NIGHT\n\n@MOM\nGo to bed.");
+
+    // The empty action element should be completely replaced by the parsed screenplay structure
+    expect(store.elements.length).toBe(3);
+    expect(store.elements[0].type).toBe("scene-heading");
+    expect(store.elements[0].text).toBe("INT. KITCHEN - NIGHT");
+    expect(store.elements[1].type).toBe("dialog-character");
+    expect(store.elements[1].text).toBe("@MOM");
+    expect(store.elements[2].type).toBe("dialog");
+    expect(store.elements[2].text).toBe("Go to bed.");
+  });
+
+  it("contextually merges or inserts when pasting at the start of an active element", () => {
+    setActivePinia(createPinia());
+    const store = useEditorStore();
+
+    // Case 1: Paste a single action line at the start (should merge)
+    store.loadFromRawContent("Line 1");
+    const id1 = store.elements[0].id;
+    store.selectElement(id1);
+    store.handlePaste("Pasted_", 0);
+    expect(store.elements.length).toBe(1);
+    expect(store.elements[0].text).toBe("Pasted_Line 1");
+
+    // Case 2: Paste a scene heading at the start (should insert before)
+    store.loadFromRawContent("Line 1");
+    const id2 = store.elements[0].id;
+    store.selectElement(id2);
+    store.handlePaste("# INT. HALLWAY - DAY", 0);
+    expect(store.elements.length).toBe(2);
+    expect(store.elements[0].type).toBe("scene-heading");
+    expect(store.elements[0].text).toBe("INT. HALLWAY - DAY");
+    expect(store.elements[1].type).toBe("action");
+    expect(store.elements[1].text).toBe("Line 1");
+  });
+
+  it("contextually splits element when pasting in the middle of text", () => {
+    setActivePinia(createPinia());
+    const store = useEditorStore();
+
+    // Paste a scene transition in the middle of action
+    store.loadFromRawContent("Before After");
+    const id = store.elements[0].id;
+    store.selectElement(id);
+    store.handlePaste(": FADE OUT.", 7);
+
+    expect(store.elements.length).toBe(3);
+    expect(store.elements[0].type).toBe("action");
+    expect(store.elements[0].text).toBe("Before ");
+    expect(store.elements[1].type).toBe("scene-transition");
+    expect(store.elements[1].text).toBe("FADE OUT.");
+    expect(store.elements[2].type).toBe("action");
+    expect(store.elements[2].text).toBe("After");
+  });
 });

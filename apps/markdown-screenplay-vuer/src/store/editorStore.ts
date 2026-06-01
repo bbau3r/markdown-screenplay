@@ -9,6 +9,7 @@ import {
   type ScreenplayElementType,
 } from "@transformers";
 import type { MetadataData, CharacterFileData } from "@/interfaces/file-data";
+import { focusElement } from "@/components/editor/caret";
 
 export const useEditorStore = defineStore("editor", () => {
   // ── State ──────────────────────────────────────────────────────────
@@ -412,6 +413,170 @@ export const useEditorStore = defineStore("editor", () => {
     return null;
   }
 
+  function parseTextToElements(text: string): ScreenplayElement[] {
+    const target = new JsonTransformTarget();
+    const transformer = new MarkupTransformer<JsonTransformTarget, ScreenplayElement[]>(target);
+    const lines = text.split(/\r?\n/);
+    lines.forEach((line) => transformer.next(line));
+    return transformer.compose().output;
+  }
+
+  function handlePaste(text: string, overrideOffset?: number): string | null {
+    const parsed = parseTextToElements(text);
+    if (parsed.length === 0) return null;
+
+    recordState(false, true);
+
+    if (selectedElementIds.value.length > 1) {
+      // Find range of selected elements
+      const idxs = selectedElementIds.value
+        .map((id) => elements.value.findIndex((e) => e.id === id))
+        .filter((idx) => idx >= 0);
+      if (idxs.length === 0) return null;
+
+      const minIdx = Math.min(...idxs);
+      
+      // Delete selected elements
+      elements.value = elements.value.filter(
+        (el) => !selectedElementIds.value.includes(el.id),
+      );
+      selectedElementIds.value = [];
+
+      // Insert parsed elements at minIdx
+      elements.value.splice(minIdx, 0, ...parsed);
+      
+      const lastInserted = parsed[parsed.length - 1];
+      selectedElementIds.value = [lastInserted.id];
+      return lastInserted.id;
+    } else {
+      // Paste inside the active element
+      const activeId = selectedElementId.value;
+      if (!activeId) {
+        // Fallback: paste at the end
+        elements.value.push(...parsed);
+        const last = parsed[parsed.length - 1];
+        selectedElementIds.value = [last.id];
+        return last.id;
+      }
+
+      const activeIdx = elements.value.findIndex((e) => e.id === activeId);
+      if (activeIdx < 0) return null;
+
+      const activeEl = elements.value[activeIdx];
+      const offset = overrideOffset ?? getCaretOffsetOfActiveElement() ?? activeEl.text.length;
+
+      const textBefore = activeEl.text.slice(0, offset);
+      const textAfter = activeEl.text.slice(offset);
+
+      // If active element is completely empty
+      if (activeEl.text === "") {
+        // Replace it completely with parsed elements
+        elements.value.splice(activeIdx, 1, ...parsed);
+        const lastInserted = parsed[parsed.length - 1];
+        selectedElementIds.value = [lastInserted.id];
+        // Move caret to end of last inserted element text
+        caretOffset.value = lastInserted.text.length;
+        return lastInserted.id;
+      }
+
+      // If active element is not empty
+      if (offset === 0) {
+        // Caret is at the start
+        if (parsed.length === 1 && parsed[0].type === "action") {
+          // Merge single action element
+          activeEl.text = parsed[0].text + activeEl.text;
+          caretOffset.value = parsed[0].text.length;
+          return activeEl.id;
+        } else {
+          // Insert all parsed elements before active element
+          elements.value.splice(activeIdx, 0, ...parsed);
+          const lastInserted = parsed[parsed.length - 1];
+          selectedElementIds.value = [lastInserted.id];
+          caretOffset.value = lastInserted.text.length;
+          return lastInserted.id;
+        }
+      } else if (offset === activeEl.text.length) {
+        // Caret is at the end
+        if (parsed.length === 1 && parsed[0].type === "action") {
+          // Merge single action element
+          activeEl.text = activeEl.text + parsed[0].text;
+          caretOffset.value = activeEl.text.length;
+          return activeEl.id;
+        } else {
+          // Insert all parsed elements after active element
+          elements.value.splice(activeIdx + 1, 0, ...parsed);
+          const lastInserted = parsed[parsed.length - 1];
+          selectedElementIds.value = [lastInserted.id];
+          caretOffset.value = lastInserted.text.length;
+          return lastInserted.id;
+        }
+      } else {
+        // Caret is in the middle
+        if (parsed.length === 1 && parsed[0].type === "action") {
+          // Merge single action element
+          activeEl.text = textBefore + parsed[0].text + textAfter;
+          caretOffset.value = textBefore.length + parsed[0].text.length;
+          return activeEl.id;
+        } else {
+          // Split active element and insert parsed elements in the middle
+          const firstPart = createElement(activeEl.type, textBefore);
+          const lastPart = createElement(activeEl.type, textAfter);
+          
+          elements.value.splice(activeIdx, 1, firstPart, ...parsed, lastPart);
+          
+          // Select and focus the last inserted parsed element
+          const lastInserted = parsed[parsed.length - 1];
+          selectedElementIds.value = [lastInserted.id];
+          caretOffset.value = lastInserted.text.length;
+          return lastInserted.id;
+        }
+      }
+    }
+  }
+
+  function deleteTextRange(startId: string, startOffset: number, endId: string, endOffset: number) {
+    const startIdx = elements.value.findIndex((e) => e.id === startId);
+    const endIdx = elements.value.findIndex((e) => e.id === endId);
+    if (startIdx < 0 || endIdx < 0) return;
+
+    recordState(false, true);
+
+    const minIdx = Math.min(startIdx, endIdx);
+    const maxIdx = Math.max(startIdx, endIdx);
+    
+    const minEl = elements.value[minIdx];
+    const maxEl = elements.value[maxIdx];
+
+    const minOffset = minIdx === startIdx ? startOffset : endOffset;
+    const maxOffset = maxIdx === endIdx ? endOffset : startOffset;
+
+    const remainingMinText = minEl.text.slice(0, minOffset);
+    const remainingMaxText = maxEl.text.slice(maxOffset);
+
+    // Merge remaining texts into minEl
+    minEl.text = remainingMinText + remainingMaxText;
+
+    // Delete all elements from minIdx + 1 to maxIdx (inclusive)
+    elements.value.splice(minIdx + 1, maxIdx - minIdx);
+
+    // Select and position caret in minEl
+    selectedElementIds.value = [minEl.id];
+    caretOffset.value = minOffset;
+    
+    // Programmatically focus minEl at minOffset
+    focusElement(minEl.id, minOffset);
+  }
+
+  function insertTextAt(id: string, offset: number, text: string) {
+    const el = elements.value.find((e) => e.id === id);
+    if (el) {
+      recordState(true);
+      el.text = el.text.slice(0, offset) + text + el.text.slice(offset);
+      caretOffset.value = offset + text.length;
+      focusElement(id, offset + text.length);
+    }
+  }
+
   function showInlineInputAfter(id: string | null) {
     inlineInputAfterElementId.value = id;
   }
@@ -535,6 +700,7 @@ export const useEditorStore = defineStore("editor", () => {
     selectedElementId,
     selectedElement,
     // actions
+    getCaretOffsetOfActiveElement,
     loadFromRawContent,
     addElement,
     updateElementText,
@@ -546,6 +712,9 @@ export const useEditorStore = defineStore("editor", () => {
     deleteSelectedElements,
     splitElement,
     mergeWithPrevious,
+    handlePaste,
+    deleteTextRange,
+    insertTextAt,
     showInlineInputAfter,
     setMetadata,
     setCharacters,
